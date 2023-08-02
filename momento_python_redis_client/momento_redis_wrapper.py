@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import builtins
 import time
 from datetime import timedelta, datetime
-from typing import Generic, TypeVar, Union, Optional, Any, Iterable, Awaitable, Literal, Callable
+from typing import Generic, TypeVar, Union, Optional, Any, Iterable, Awaitable, Literal, Callable, List
 
 from momento import CacheClient
 from momento.requests import SortOrder
@@ -212,8 +214,9 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands[_StrType], S
         elif isinstance(rsp, CacheDictionaryFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    def hdel(self, name, *keys) -> int:
-        rsp = self.client.dictionary_remove_fields(self.cache_name, name, keys)
+    def hdel(self, name, *keys: List) -> int:
+        # TODO: Ugh. Make sure keys are getting handled properly here.
+        rsp = self.client.dictionary_remove_fields(self.cache_name, name, *keys)
         if isinstance(rsp, CacheDictionaryRemoveFields.Success):
             return len(keys)
         elif isinstance(rsp, CacheDictionaryRemoveFields.Error):
