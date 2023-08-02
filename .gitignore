@@ -1,0 +1,18 @@
+# Compiled python modules.
+**/*.pyc
+**/__pycache__
+
+# Setuptools distribution folder.
+dist/
+
+# Don't checkin the pyenv/tox files
+.tox
+.python-version
+
+.idea
+.vscode
+
+momento-examples-env/
+
+*.egg-info
+build
