@@ -15,8 +15,8 @@ from momento.responses.data.sorted_set.remove_elements import CacheSortedSetRemo
 from redis.client import AbstractRedis
 from redis.commands import RedisModuleCommands, CoreCommands, SentinelCommands
 
-from src.utils.error_utils import convert_momento_to_redis_errors
-from src.utils.momento_multi_utils import multi_delete, multi_get, multi_set
+from utils.error_utils import convert_momento_to_redis_errors
+from utils.momento_multi_utils import multi_delete, multi_get, multi_set
 
 _StrType = TypeVar("_StrType", bound=Union[str, bytes])
 
