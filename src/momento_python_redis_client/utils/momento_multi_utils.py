@@ -8,7 +8,9 @@ from momento.typing import TDictionaryItems
 from .error_utils import convert_momento_to_redis_errors
 
 
+# TODO: dude, wtf? This errors without the `async` and `await`.
 def multi_get(client: CacheClient, cache_name: str, keys: List[str]):
+# async def multi_get(client: CacheClient, cache_name: str, keys: List[str]):
     promises = []
     for k in keys:
         promises.append(aio_get_wrapper(client, cache_name, k))
@@ -17,6 +19,7 @@ def multi_get(client: CacheClient, cache_name: str, keys: List[str]):
 
     values = []
     for rsp in responses:
+        # await rsp
         if isinstance(rsp, CacheGet.Hit):
             values.append(rsp.value_bytes)
         elif isinstance(rsp, CacheGet.Miss):

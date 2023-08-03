@@ -41,7 +41,9 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         # rsp = self.client.get("default", name)
         rsp = self.client.get(self.cache_name, name)
         if isinstance(rsp, CacheGet.Hit):
-            return rsp.value_string
+            # TODO: Redis is returning bytes . . . discuss with Ellery
+            # return rsp.value_string
+            return rsp.value_bytes
         elif isinstance(rsp, CacheGet.Miss):
             return None
         elif isinstance(rsp, CacheGet.Error):
@@ -111,6 +113,9 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
     def delete(self, *names) -> int:
         return len(multi_delete(self.client, self.cache_name, [i for i in names]))
 
+    # TODO: is there some reason to use ellipses for the default value of `amount` here?
+    #  Redis doesn't actually care if we pass an amount or not and defaults to 1. Why would
+    #  we not do the same?
     def decr(self, name, amount: int = ...) -> int:
         rsp = self.client.increment(
             self.cache_name,
