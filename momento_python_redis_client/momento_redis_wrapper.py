@@ -17,8 +17,8 @@ from momento.responses.data.sorted_set.remove_elements import CacheSortedSetRemo
 from redis.client import AbstractRedis
 from redis.commands import RedisModuleCommands, CoreCommands, SentinelCommands
 
-from utils.error_utils import convert_momento_to_redis_errors
-from utils.momento_multi_utils import multi_delete, multi_get, multi_set
+from .utils.error_utils import convert_momento_to_redis_errors
+from .utils.momento_multi_utils import multi_delete, multi_get, multi_set
 
 _StrType = TypeVar("_StrType", bound=Union[str, bytes])
 
@@ -27,14 +27,19 @@ NOT_IMPL_ERR = "is not yet implemented in MomentoRedisClient. Please drop by our
                "APIs you need!"
 
 
-class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands[_StrType], SentinelCommands, Generic[_StrType]):
+# TODO: subscripting CoreCommands results in
+#  'TypeError: <class 'redis.commands.core.CoreCommands'> is not a generic class'
+# class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands[_StrType], SentinelCommands, Generic[_StrType]):
+class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCommands, Generic[_StrType]):
+
     def __init__(self, client: CacheClient, cache_name: str):
         self.client = client
         self.cache_name = cache_name
         pass
 
     def get(self, name) -> Optional[_StrType]:
-        rsp = self.client.get("default", name)
+        # rsp = self.client.get("default", name)
+        rsp = self.client.get(self.cache_name, name)
         if isinstance(rsp, CacheGet.Hit):
             return rsp.value_string
         elif isinstance(rsp, CacheGet.Miss):
@@ -489,3 +494,36 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands[_StrType], S
             return []
         elif isinstance(rsp, CacheListFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
+
+    def command_docs(self, *args):
+        raise NotImplementedError("command_docs " + NOT_IMPL_ERR)
+
+    def debug_segfault(self, **kwargs) -> None:
+        raise NotImplementedError("debug_segfault " + NOT_IMPL_ERR)
+
+    def latency_doctor(self):
+        raise NotImplementedError("latency_doctor " + NOT_IMPL_ERR)
+
+    def latency_graph(self):
+        raise NotImplementedError("latency_graph " + NOT_IMPL_ERR)
+
+    def memory_doctor(self, **kwargs) -> None:
+        raise NotImplementedError("memory_doctor " + NOT_IMPL_ERR)
+
+    def memory_help(self, **kwargs) -> None:
+        raise NotImplementedError("memory_help " + NOT_IMPL_ERR)
+
+    def latency_histogram(self, *args):
+        raise NotImplementedError("latency_histogram " + NOT_IMPL_ERR)
+
+    def hello(self):
+        raise NotImplementedError("hello " + NOT_IMPL_ERR)
+
+    def failover(self):
+        raise NotImplementedError("failover " + NOT_IMPL_ERR)
+
+    def script_debug(self, *args) -> None:
+        raise NotImplementedError("script_debug " + NOT_IMPL_ERR)
+
+    def command_info(self, **kwargs) -> None:
+        raise NotImplementedError("command_info " + NOT_IMPL_ERR)

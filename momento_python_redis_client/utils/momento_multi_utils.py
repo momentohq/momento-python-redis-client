@@ -1,13 +1,14 @@
 import asyncio
+from typing import List
 
 from momento import CacheClient
 from momento.responses import CacheGet, CacheSet, CacheDelete
 from momento.typing import TDictionaryItems
 
-from src.utils.error_utils import convert_momento_to_redis_errors
+from .error_utils import convert_momento_to_redis_errors
 
 
-def multi_get(client: CacheClient, cache_name: str, keys: list[str]):
+def multi_get(client: CacheClient, cache_name: str, keys: List[str]):
     promises = []
     for k in keys:
         promises.append(aio_get_wrapper(client, cache_name, k))
@@ -47,7 +48,7 @@ async def aio_set_wrapper(client: CacheClient, cache_name: str, key: str, val):
     return client.set(cache_name, key, val)
 
 
-def multi_delete(client: CacheClient, cache_name: str, keys: list[str]):
+def multi_delete(client: CacheClient, cache_name: str, keys: List[str]):
     promises = []
     for k in keys:
         promises.append(aio_delete_wrapper(client=client, cache_name=cache_name, key=k))
