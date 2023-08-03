@@ -114,8 +114,12 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         return len(multi_delete(self.client, self.cache_name, [i for i in names]))
 
     # TODO: is there some reason to use ellipses for the default value of `amount` here?
-    #  Redis doesn't actually care if we pass an amount or not and defaults to 1. Why would
-    #  we not do the same?
+    #  "TypeError: bad operand type for unary -: 'ellipsis'"
+    #  is a crappy error message compared to
+    #  "TypeError: decr() missing 1 required positional argument: 'amount'"
+    #
+    # TODO: Redis doesn't actually care if we pass an amount or not and defaults to 1. Why would
+    #  we not do the same? That would also get rid of the ellipses.
     def decr(self, name, amount: int = ...) -> int:
         rsp = self.client.increment(
             self.cache_name,
