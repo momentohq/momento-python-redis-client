@@ -26,4 +26,8 @@ def momento_redis_client():
 
 @pytest.fixture(scope="session")
 def redis_client():
-    yield redis.Redis("localhost", 6379, 0)
+    with redis.Redis("localhost", 6379, 0) as client:
+        try:
+            yield client
+        finally:
+            client.close()

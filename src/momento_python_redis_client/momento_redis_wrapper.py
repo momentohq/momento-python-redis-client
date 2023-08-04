@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import builtins
 import time
+import warnings
 from datetime import timedelta, datetime
 from typing import Generic, TypeVar, Union, Optional, Any, Iterable, Awaitable, Literal, Callable, List
 
+import redis
 from momento import CacheClient
 from momento.requests import SortOrder
 from momento.responses import CacheGet, CacheSetIfNotExists, CacheIncrement, CacheDictionaryGetField, \
@@ -105,6 +107,8 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             raise convert_momento_to_redis_errors(rsp)
 
     def setex(self, name, time: int | timedelta, value) -> bool:
+        if isinstance(time, int):
+            time = timedelta(seconds=time)
         rsp = self.client.set(self.cache_name, name, value, time)
         if isinstance(rsp, CacheSet.Error):
             raise convert_momento_to_redis_errors(rsp)
@@ -167,7 +171,9 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
     def hget(self, name, key) -> _StrType | None:
         rsp = self.client.dictionary_get_field(self.cache_name, name, key)
         if isinstance(rsp, CacheDictionaryGetField.Hit):
-            return rsp.value_string
+            # TODO: Redis returns bytes
+            # return rsp.value_string
+            return rsp.value_bytes
         elif isinstance(rsp, CacheDictionaryGetField.Miss):
             return None
         elif isinstance(rsp, CacheDictionaryGetField.Error):
@@ -176,12 +182,16 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
     def hmget(self, name, keys: _StrType | Iterable[_StrType], *args: _StrType) -> list[_StrType | None]:
         rsp = self.client.dictionary_get_fields(self.cache_name, name, keys)
         if isinstance(rsp, CacheDictionaryGetFields.Hit):
-            return list(rsp.value_dictionary_string_string.values())
+            # TODO: Redis returns these as bytes.
+            # return list(rsp.value_dictionary_string_string.values())
+            return list(rsp.value_dictionary_bytes_bytes.values())
 
     def hgetall(self, name) -> dict[_StrType, _StrType]:
         rsp = self.client.dictionary_fetch(self.cache_name, name)
         if isinstance(rsp, CacheDictionaryFetch.Hit):
-            return rsp.value_dictionary_string_string
+            # TODO: Redis returns this as bytes
+            # return rsp.value_dictionary_string_string
+            return rsp.value_dictionary_bytes_bytes
         elif isinstance(rsp, CacheDictionaryFetch.Miss):
             return {}
         elif isinstance(rsp, CacheDictionaryFetch.Error):
@@ -195,7 +205,10 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             mapping: Optional[dict] = None,
             items: Optional[list] = None,
     ) -> int:
+        if key is None and not mapping and not items:
+            raise redis.DataError("'hset' with no key value pairs")
         items_to_set = {}
+
         if key is not None:
             items_to_set.update([(key, value)])
 
@@ -203,7 +216,8 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             items_to_set.update(mapping)
 
         if items is not None:
-            items_to_set.update(dict(items))
+            # items_to_set.update(dict(items))
+            items_to_set.update({items[i]: items[i+1] for i in range(0, len(items), 2)})
 
         rsp = self.client.dictionary_set_fields(self.cache_name, name, items_to_set)
         if isinstance(rsp, CacheDictionarySetFields.Success):
@@ -212,6 +226,12 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             raise convert_momento_to_redis_errors(rsp)
 
     def hmset(self, name, mapping) -> bool:
+        warnings.warn(
+            f"{self.__class__.__name__}.hmset() is deprecated. "
+            f"Use {self.__class__.__name__}.hset() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         rsp = self.client.dictionary_set_fields(self.cache_name, name, mapping)
         if isinstance(rsp, CacheDictionarySetFields.Success):
             return True
@@ -222,15 +242,17 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         # TODO once have api to just fetch keys use that instead
         rsp = self.client.dictionary_fetch(self.cache_name, name)
         if isinstance(rsp, CacheDictionaryFetch.Hit):
-            return list(rsp.value_dictionary_string_string.keys())
+            # TODO: Redis returns bytes
+            # return list(rsp.value_dictionary_string_string.keys())
+            return list(rsp.value_dictionary_bytes_bytes.keys())
         elif isinstance(rsp, CacheDictionaryFetch.Miss):
             return []
         elif isinstance(rsp, CacheDictionaryFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    def hdel(self, name, *keys: List) -> int:
+    def hdel(self, name, *keys) -> int:
         # TODO: Ugh. Make sure keys are getting handled properly here.
-        rsp = self.client.dictionary_remove_fields(self.cache_name, name, *keys)
+        rsp = self.client.dictionary_remove_fields(self.cache_name, name, keys)
         if isinstance(rsp, CacheDictionaryRemoveFields.Success):
             return len(keys)
         elif isinstance(rsp, CacheDictionaryRemoveFields.Error):
@@ -253,14 +275,18 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
     def smembers(self, name) -> builtins.set[_StrType]:
         rsp = self.client.set_fetch(self.cache_name, name)
         if isinstance(rsp, CacheSetFetch.Hit):
-            return rsp.value_set_string
+            # TODO: Redis returns bytes
+            # return rsp.value_set_string
+            return rsp.value_set_bytes
         elif isinstance(rsp, CacheSetFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
 
     def srem(self, name, *values) -> int:
         rsp = self.client.set_remove_elements(self.cache_name, name, values)
         if isinstance(rsp, CacheSetRemoveElements.Success):
-            return len([values])
+            # TODO: this always returns 1
+            # return len([values])
+            return len(values)
         elif isinstance(rsp, CacheSetRemoveElements.Error):
             raise convert_momento_to_redis_errors(rsp)
 
