@@ -356,3 +356,132 @@ def test_srem_happy_path(client, request):
     assert val == len(to_remove)
     the_set = client.smembers(set_name)
     assert the_set == members
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_zadd_zrange_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}": float(i) for i in range(1, 11)}
+    expected = [(f"score-{i}".encode("utf8"), float(i)) for i in range(2, 5)]
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zrange(sorted_set_name, 1, 3, False, True)
+    assert val == expected
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_zincrby_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}": float(i) for i in range(1, 11)}
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zincrby(sorted_set_name, float(4.5), "score-1")
+    assert val == 5.5
+    val = client.zincrby(sorted_set_name, float(-4.5), "score-1")
+    assert val == 1.0
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_zrem_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}".encode("utf8"): float(i) for i in range(1, 11)}
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zrem(sorted_set_name, "score-2", "score-4", "score-6")
+    assert val == 3
+    mapping.pop("score-2".encode("utf8"))
+    mapping.pop("score-4".encode("utf8"))
+    mapping.pop("score-6".encode("utf8"))
+    val = client.zrange(sorted_set_name, 0, 100)
+    assert val == [k for k in mapping.keys()]
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+@pytest.mark.parametrize("withscores", [
+    (True, [(f"score-{i}".encode("utf8"), float(i)) for i in range(2, 5)]),
+    (False, [f"score-{i}".encode("utf8") for i in range(2, 5)])
+ ], ids=["withscores", "withoutscores"])
+def test_zrange_withscores_happy_path(client, withscores, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}": float(i) for i in range(1, 11)}
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zrange(sorted_set_name, 1, 3, False, withscores[0])
+    assert val == withscores[1]
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_zrange_desc_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}": float(i) for i in range(1, 11)}
+    expected = [(f"score-{i}".encode("utf8"), float(i)) for i in range(7, 10)]
+    expected.reverse()
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zrange(sorted_set_name, 1, 3, True, True)
+    assert val == expected
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_zrange_byscore_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}": float(i*20) for i in range(1, 11)}
+    expected = [(f"score-{i}".encode("utf8"), float(i*20)) for i in range(2, 5)]
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zrange(sorted_set_name, 40, 80, False, True, byscore=True)
+    assert val == expected
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+@pytest.mark.parametrize("withscores", [
+    (True, [(f"score-{i}".encode("utf8"), float(i*20)) for i in range(2, 5)]),
+    (False, [f"score-{i}".encode("utf8") for i in range(2, 5)]),
+])
+def test_zrangebyscore_happy_path(client, withscores, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}": float(i*20) for i in range(1, 11)}
+    expected = withscores[1]
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zrangebyscore(sorted_set_name, 40, 80, withscores=withscores[0])
+    assert val == expected
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+@pytest.mark.parametrize("withscores", [
+    (True, [(f"score-{i}".encode("utf8"), float(i*20)) for i in range(10, 0, -1)]),
+    (False, [f"score-{i}".encode("utf8") for i in range(10, 0, -1)]),
+])
+def test_zrevrange_happy_path(client, withscores, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}": float(i*20) for i in range(1, 11)}
+    expected = withscores[1]
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zrevrange(sorted_set_name, 0, 1000, withscores=withscores[0])
+    assert val == withscores[1]
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+@pytest.mark.parametrize("withscores", [
+    (True, [(f"score-{i}".encode("utf8"), float(i*20)) for i in range(4, 1, -1)]),
+    (False, [f"score-{i}".encode("utf8") for i in range(4, 1, -1)]),
+])
+def test_zrevrangebyscore_happy_path(client, withscores, request):
+    client = request.getfixturevalue(client)
+    mapping = {f"score-{i}": float(i*20) for i in range(1, 11)}
+    expected = withscores[1]
+    sorted_set_name = str(uuid.uuid4())
+    val = client.zadd(sorted_set_name, mapping)
+    assert val == len(mapping)
+    val = client.zrevrangebyscore(sorted_set_name, 80, 40, withscores=withscores[0])
+    assert val == expected

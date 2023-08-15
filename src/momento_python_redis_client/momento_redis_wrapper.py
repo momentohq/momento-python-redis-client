@@ -18,6 +18,7 @@ from momento.responses.data.sorted_set.increment import CacheSortedSetIncrement
 from momento.responses.data.sorted_set.remove_elements import CacheSortedSetRemoveElements
 from redis.client import AbstractRedis
 from redis.commands import RedisModuleCommands, CoreCommands, SentinelCommands
+from redis.typing import KeyT, ZScoreBoundT
 
 from .utils.error_utils import convert_momento_to_redis_errors
 from .utils.momento_multi_utils import multi_delete, multi_get, multi_set
@@ -301,21 +302,22 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             gt: Any | None = ...,
             lt: Any | None = ...,
     ) -> int:
-        if nx:
+        if nx is not ...:
             raise NotImplementedError("SortedSetAddOption NX" + NOT_IMPL_ERR)
-        elif xx:
+        elif xx is not ...:
             raise NotImplementedError("SortedSetAddOption XX" + NOT_IMPL_ERR)
-        elif ch:
+        elif ch is not ...:
             raise NotImplementedError("SortedSetAddOption CH" + NOT_IMPL_ERR)
-        elif incr is not None:
-            raise NotImplementedError("SortedSetAddOption incr" + NOT_IMPL_ERR)
-        elif gt is not None:
+        elif incr is not ...:
             raise NotImplementedError("SortedSetAddOption INCR" + NOT_IMPL_ERR)
-        elif lt is not None:
+        elif gt is not ...:
+            raise NotImplementedError("SortedSetAddOption GT" + NOT_IMPL_ERR)
+        elif lt is not ...:
             raise NotImplementedError("SortedSetAddOption LT" + NOT_IMPL_ERR)
 
         rsp = self.client.sorted_set_put_elements(self.cache_name, name, mapping)
         if isinstance(rsp, CacheSortedSetPutElements.Success):
+            # TODO: if we do this, we need to document it
             # Always return count of all added redis only returns count new items added
             return len(mapping)
         elif isinstance(rsp, CacheSortedSetPutElements.Error):
@@ -335,23 +337,32 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         elif isinstance(rsp, CacheSortedSetRemoveElements.Error):
             raise convert_momento_to_redis_errors(rsp)
 
+    # TODO: `byscore` branch broken due to SDK bug
     def zrange(
             self,
-            name,
+            name: KeyT,
             start: int,
             end: int,
-            desc: bool,
-            withscores: Literal[True],
-            score_cast_func: Callable[[_StrType], float | int],
-            byscore: bool = ...,
-            bylex: bool = ...,
-            offset: int | None = ...,
-            num: int | None = ...,
+            desc: bool = False,
+            withscores: bool = False,
+            # TODO: this is being ignored
+            score_cast_func: Union[type, Callable] = float,
+            byscore: bool = False,
+            # TODO: this is being ignored
+            bylex: bool = False,
+            offset: int | None = None,
+            num: int | None = None,
     ) -> list[tuple[_StrType, float | int]] | list[_StrType]:
+
+        # TODO: `KeyT` is `Union[bytes, str, memoryview]` so we need to make sure
+        #  to cast `name` to str
 
         sort_order = SortOrder.ASCENDING
         if desc:
             sort_order = sort_order.DESCENDING
+
+        # correct for redis-inclusive/momento-exclusive end index
+        end += 1
 
         if byscore:
             rsp = self.client.sorted_set_fetch_by_score(
@@ -359,11 +370,14 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
                 sorted_set_name=name,
                 min_score=start,
                 max_score=end,
+                # TODO: do we really want to override this?
                 sort_order=SortOrder.DESCENDING,
-                offset=start,
+                # TODO: um, we already used this for min_score
+                offset=offset,
                 count=num
             )
         else:
+            # TODO: count and offset are ignored here
             rsp = self.client.sorted_set_fetch_by_rank(
                 cache_name=self.cache_name,
                 sorted_set_name=name,
@@ -374,24 +388,24 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
 
         if isinstance(rsp, CacheSortedSetFetch.Hit):
             if withscores:
-                return rsp.value_list_string
+                return rsp.value_list_bytes
             else:
-                return [v[0] for v in rsp.value_list_string]
+                return [v[0] for v in rsp.value_list_bytes]
         elif isinstance(rsp, CacheSortedSetFetch.Miss):
             return []
         elif isinstance(rsp, CacheSortedSetFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
 
+    # TODO: `zrangebyscore` broken due to SDK bug
     def zrangebyscore(
             self,
-            name,
-            min,
-            max,
-            start: int | None = ...,
-            num: int | None = ...,
-            *,
-            withscores: Literal[True],
-            score_cast_func: Callable[[_StrType], float | int],
+            name: KeyT,
+            min: ZScoreBoundT,
+            max: ZScoreBoundT,
+            start: int | None = None,
+            num: int | None = None,
+            withscores: bool = False,
+            score_cast_func: Union[type, Callable] = float,
     ) -> list[tuple[_StrType, float | int]] | list[_StrType]:
         rsp = self.client.sorted_set_fetch_by_score(
             cache_name=self.cache_name,
@@ -414,24 +428,24 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
 
     def zrevrange(
             self,
-            name,
+            name: KeyT,
             start: int,
             end: int,
-            withscores: Literal[True],
-            score_cast_func: Callable[[_StrType], float | int],
+            withscores: bool = False,
+            score_cast_func: Union[type, Callable] = float,
     ) -> list[tuple[_StrType, float | int]] | list[_StrType]:
         rsp = self.client.sorted_set_fetch_by_rank(
             self.cache_name,
             name,
             start_rank=start,
             end_rank=end,
-            sort_order=SortOrder.ASCENDING
+            sort_order=SortOrder.DESCENDING
         )
         if isinstance(rsp, CacheSortedSetFetch.Hit):
             if withscores:
-                return rsp.value_list_string
+                return rsp.value_list_bytes
             else:
-                return [v[0] for v in rsp.value_list_string]
+                return [v[0] for v in rsp.value_list_bytes]
         elif isinstance(rsp, CacheSortedSetFetch.Miss):
             return []
         elif isinstance(rsp, CacheSortedSetFetch.Error):
@@ -439,29 +453,28 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
 
     def zrevrangebyscore(
             self,
-            name,
-            max,
-            min,
-            start: int | None = ...,
-            num: int | None = ...,
-            *,
-            withscores: Literal[True],
-            score_cast_func: Callable[[_StrType], float | int],
+            name: KeyT,
+            min: ZScoreBoundT,
+            max: ZScoreBoundT,
+            start: int | None = None,
+            num: int | None = None,
+            withscores: bool = False,
+            score_cast_func: Union[type, Callable] = float,
     ) -> list[tuple[_StrType, float | int]] | list[_StrType]:
         rsp = self.client.sorted_set_fetch_by_score(
             cache_name=self.cache_name,
             sorted_set_name=name,
             min_score=min,
             max_score=max,
-            sort_order=SortOrder.ASCENDING,
+            sort_order=SortOrder.DESCENDING,
             offset=start,
             count=num
         )
         if isinstance(rsp, CacheSortedSetFetch.Hit):
             if withscores:
-                return rsp.value_list_string
+                return rsp.value_list_bytes
             else:
-                return [v[0] for v in rsp.value_list_string]
+                return [v[0] for v in rsp.value_list_bytes]
         elif isinstance(rsp, CacheSortedSetFetch.Miss):
             return []
         elif isinstance(rsp, CacheSortedSetFetch.Error):
