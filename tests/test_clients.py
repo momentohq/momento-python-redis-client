@@ -485,3 +485,61 @@ def test_zrevrangebyscore_happy_path(client, withscores, request):
     assert val == len(mapping)
     val = client.zrevrangebyscore(sorted_set_name, 80, 40, withscores=withscores[0])
     assert val == expected
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_lpush_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    sorted_set_name = str(uuid.uuid4())
+    expected = [i.encode("utf8") for i in ["one", "two", "three"]]
+    val = client.lpush(sorted_set_name, *expected)
+    assert val == len(expected)
+    val = client.lrange(sorted_set_name, 0, 100)
+    # reverse expected since we're pushing to front
+    expected.reverse()
+    assert val == expected
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_rpush_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    sorted_set_name = str(uuid.uuid4())
+    expected = [i.encode("utf8") for i in ["one", "two", "three"]]
+    val = client.rpush(sorted_set_name, *expected)
+    assert val == len(expected)
+    val = client.lrange(sorted_set_name, 0, 100)
+    assert val == expected
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_lpop_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    sorted_set_name = str(uuid.uuid4())
+    the_list = ["one", "two", "three"]
+    val = client.rpush(sorted_set_name, *the_list)
+    assert val == len(the_list)
+    val = client.lpop(sorted_set_name)
+    assert val == the_list[0].encode("utf8")
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_lpop_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    sorted_set_name = str(uuid.uuid4())
+    the_list = ["one", "two", "three"]
+    val = client.rpush(sorted_set_name, *the_list)
+    assert val == len(the_list)
+    val = client.rpop(sorted_set_name)
+    assert val == the_list[-1].encode("utf8")
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_llen_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    sorted_set_name = str(uuid.uuid4())
+    the_list = ["one", "two", "three"]
+    val = client.rpush(sorted_set_name, *the_list)
+    assert val == len(the_list)
+    val = client.llen(sorted_set_name)
+    assert val == len(the_list)
+

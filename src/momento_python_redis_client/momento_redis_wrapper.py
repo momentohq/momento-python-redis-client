@@ -12,7 +12,7 @@ from momento.requests import SortOrder
 from momento.responses import CacheGet, CacheSetIfNotExists, CacheIncrement, CacheDictionaryGetField, \
     CacheDictionaryFetch, CacheDictionarySetField, CacheDictionarySetFields, CacheDictionaryGetFields, \
     CacheDictionaryRemoveFields, CacheDictionaryIncrement, CacheSetAddElements, CacheSetFetch, CacheSetRemoveElements, \
-    CacheListPushFront, CacheListPushBack, CacheListPopFront, CacheListPopBack, CacheListLength, CacheSet, \
+    CacheListConcatenateFront, CacheListConcatenateBack, CacheListPushBack, CacheListPopFront, CacheListPopBack, CacheListLength, CacheSet, \
     CacheSortedSetPutElements, CacheSortedSetGetRank, CacheSortedSetFetch, CacheListFetch
 from momento.responses.data.sorted_set.increment import CacheSortedSetIncrement
 from momento.responses.data.sorted_set.remove_elements import CacheSortedSetRemoveElements
@@ -25,7 +25,7 @@ from .utils.momento_multi_utils import multi_delete, multi_get, multi_set
 
 _StrType = TypeVar("_StrType", bound=Union[str, bytes])
 
-NOT_IMPL_ERR = "is not yet implemented in MomentoRedisClient. Please drop by our Discord at " \
+NOT_IMPL_ERR = " is not yet implemented in MomentoRedisClient. Please drop by our Discord at " \
                "https://discord.com/invite/3HkAKjUZGq , or contact us at support@momentohq.com, and let us know what " \
                "APIs you need!"
 
@@ -38,7 +38,6 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
     def __init__(self, client: CacheClient, cache_name: str):
         self.client = client
         self.cache_name = cache_name
-        pass
 
     def get(self, name) -> Optional[_StrType]:
         # rsp = self.client.get("default", name)
@@ -451,6 +450,7 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         elif isinstance(rsp, CacheSortedSetFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
 
+    # TODO: broken pending SDK fix
     def zrevrangebyscore(
             self,
             name: KeyT,
@@ -481,40 +481,39 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             raise convert_momento_to_redis_errors(rsp)
 
     def lpush(self, name, *values) -> int:
-        rsp = self.client.list_push_front(self.cache_name, name, *values)
-        if isinstance(rsp, CacheListPushFront.Success):
+        rsp = self.client.list_concatenate_front(self.cache_name, name, values)
+        if isinstance(rsp, CacheListConcatenateFront.Success):
             return len(values)
-        elif isinstance(rsp, CacheListPushFront.Error):
+        elif isinstance(rsp, CacheListConcatenateFront.Error):
             raise convert_momento_to_redis_errors(rsp)
 
     def rpush(self, name, *values) -> int:
-        rsp = self.client.list_push_back(self.cache_name, name, *values)
-        if isinstance(rsp, CacheListPushBack.Success):
+        rsp = self.client.list_concatenate_back(self.cache_name, name, values)
+        if isinstance(rsp, CacheListConcatenateBack.Success):
             return len(values)
-        elif isinstance(rsp, CacheListPushBack.Error):
+        elif isinstance(rsp, CacheListConcatenateBack.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    def lpop(self, name, count: int | None = ...):
+    def lpop(self, name, count: int | None = None):
         if count is not None:
             # FIXME our API only supports popping single item off list for now
             raise NotImplementedError("Cannot pop more then 1 element off list for now")
 
         rsp = self.client.list_pop_front(self.cache_name, name)
         if isinstance(rsp, CacheListPopFront.Hit):
-            return rsp.value_string
+            return rsp.value_bytes
         elif isinstance(rsp, CacheListPopFront.Miss):
             return None
         elif isinstance(rsp, CacheListPopFront.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    def rpop(self, name, count: int | None = ...):
+    def rpop(self, name, count: int | None = None):
         if count is not None:
             # FIXME our API only supports popping single item off list for now
             raise NotImplementedError("Cannot pop more then 1 element off list for now")
-
         rsp = self.client.list_pop_back(self.cache_name, name)
         if isinstance(rsp, CacheListPopBack.Hit):
-            return rsp.value_string
+            return rsp.value_bytes
         elif isinstance(rsp, CacheListPopBack.Miss):
             return None
         elif isinstance(rsp, CacheListPopBack.Error):
@@ -530,6 +529,8 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             raise convert_momento_to_redis_errors(rsp)
 
     def lrange(self, name, start: int, end: int) -> list[_StrType]:
+        # TODO: These are REQUIRED by Redis (and the method signature).
+        #  It makes no sense to do this.
         if start:
             raise NotImplementedError("ListRangeOption start" + NOT_IMPL_ERR)
         elif end:
