@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import timedelta
+
 import momento
+import pytest
 import redis
 
 from momento_python_redis_client.momento_redis_wrapper import MomentoRedis
-import pytest
 
 
 @pytest.fixture(scope="session")
@@ -15,7 +16,7 @@ def momento_redis_client():
     with momento.CacheClient(
         momento.Configurations.Laptop.latest(),
         momento.CredentialProvider.from_environment_variable("MOMENTO_AUTH_TOKEN"),
-        timedelta(seconds=60)
+        timedelta(seconds=60),
     ) as client:
         client.create_cache(cache_name)
         try:

@@ -1,6 +1,7 @@
 import time
 import uuid
 from datetime import timedelta
+
 import pytest
 import redis
 
@@ -10,11 +11,12 @@ import redis
 # @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"], ids=["redis", "momento"])
 @pytest.mark.parametrize(
     "client,exception",
-    [("redis_client", redis.exceptions.DataError), ("momento_redis_client", redis.exceptions.RedisError)],
-    ids=["redis", "momento"]
+    [
+        ("redis_client", redis.exceptions.DataError),
+        ("momento_redis_client", redis.exceptions.RedisError),
+    ],
+    ids=["redis", "momento"],
 )
-# def test_get_sad_path(client, request):
-#   exception = redis.exceptions.DataError
 def test_get_sad_path(client, exception, request):
     client = request.getfixturevalue(client)
     with pytest.raises(exception) as exc_info:
@@ -26,9 +28,9 @@ def test_get_sad_path(client, exception, request):
 def test_set_get_happy_path(client, request):
     client = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    client.set(key, 'bar')
+    client.set(key, "bar")
     val = client.get(key)
-    assert val == b'bar'
+    assert val == b"bar"
 
 
 # TODO: this test fails with `RuntimeError: await wasn't used with future`, which originates from
@@ -38,21 +40,21 @@ def test_set_get_happy_path(client, request):
 def test_mget_happy_path(client, request):
     client = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    client.set(f"{key}-1", 'bar1')
-    client.set(f"{key}-2", 'bar2')
-    client.set(f"{key}-3", 'bar3')
+    client.set(f"{key}-1", "bar1")
+    client.set(f"{key}-2", "bar2")
+    client.set(f"{key}-3", "bar3")
     val = client.mget([f"{key}-1", f"{key}-2", f"{key}-3"])
     # TODO: val is a coroutine, but mget is ostensibly synchronous
-    assert val == [b'bar1', b'bar2', b'bar3']
+    assert val == [b"bar1", b"bar2", b"bar3"]
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_setnx_happy_path(client, request):
     client = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    resp = client.setnx(key, 'bar')
+    resp = client.setnx(key, "bar")
     assert resp is True
-    resp = client.setnx(key, 'bar')
+    resp = client.setnx(key, "bar")
     assert resp is False
 
 
@@ -60,9 +62,9 @@ def test_setnx_happy_path(client, request):
 def test_setex_happy_path(client, request):
     client = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    client.setex(key, timedelta(seconds=2), 'bar')
+    client.setex(key, timedelta(seconds=2), "bar")
     val = client.get(key)
-    assert val == b'bar'
+    assert val == b"bar"
     time.sleep(2)
     val = client.get(key)
     assert val is None
@@ -75,10 +77,10 @@ def test_setex_happy_path(client, request):
 def test_delete_happy_path(client, request):
     client = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    client.set(key, 'bar')
+    client.set(key, "bar")
     val = client.get(key)
-    assert val == b'bar'
-    client.delete("foo")
+    assert val == b"bar"
+    client.delete(key)
     val = client.get(key)
     assert val is None
 
@@ -152,10 +154,10 @@ def test_hset_hget_keyval_happy_path(client, request):
     client = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     map_name = str(uuid.uuid4())
-    num_set = client.hset(map_name, key, 'bar')
+    num_set = client.hset(map_name, key, "bar")
     assert num_set == 1
     val = client.hget(map_name, key)
-    assert val == b'bar'
+    assert val == b"bar"
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
@@ -194,12 +196,8 @@ def test_hset_hget_items_happy_path(client, request):
 # TODO: Redis accepts the multi-type inputs here without a problem. We choke on anything
 #  that isn't bytes|str on the way in.
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
-@pytest.mark.parametrize("items", [
-    [b'a', b'b', b'c', b'd'], ["a", "b", "c", "d"], [5, 6, 7, 8]
-])
-@pytest.mark.parametrize("mapping", [
-    {"1": "2", "3": "4"}, {1: 2, 3: 4}, {b"1": b"2", b"3": b"4"}
-])
+@pytest.mark.parametrize("items", [[b"a", b"b", b"c", b"d"], ["a", "b", "c", "d"], [5, 6, 7, 8]])
+@pytest.mark.parametrize("mapping", [{"1": "2", "3": "4"}, {1: 2, 3: 4}, {b"1": b"2", b"3": b"4"}])
 def test_hset_hgetall_all_hset_params_happy_path(client, items, mapping, request):
     client = request.getfixturevalue(client)
     map_name = str(uuid.uuid4())
@@ -215,7 +213,7 @@ def test_hset_hgetall_all_hset_params_happy_path(client, items, mapping, request
         else:
             binitems.append(i)
     items = binitems
-    expected_items = {items[i]: items[i+1] for i in range(0, len(items), 2)}
+    expected_items = {items[i]: items[i + 1] for i in range(0, len(items), 2)}
     for k, v in mapping.items():
         if not isinstance(k, bytes):
             k = str(k).encode("utf8")
@@ -329,11 +327,8 @@ def test_hincrby_with_amount_happy_path(client, initial_value, incr_value, reque
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 @pytest.mark.parametrize(
     "members",
-    [
-        {f"{i}" for i in range(0, 10)},
-        {f"{i}".encode("utf8") for i in range(0, 10)}
-    ],
-    ids=["string", "bytes"]
+    [{f"{i}" for i in range(0, 10)}, {f"{i}".encode("utf8") for i in range(0, 10)}],
+    ids=["string", "bytes"],
 )
 def test_sadd_smembers_happy_path(client, members, request):
     client = request.getfixturevalue(client)
@@ -418,10 +413,14 @@ def test_zrem_happy_path(client, request):
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
-@pytest.mark.parametrize("withscores", [
-    (True, [(f"score-{i}".encode("utf8"), float(i)) for i in range(2, 5)]),
-    (False, [f"score-{i}".encode("utf8") for i in range(2, 5)])
- ], ids=["withscores", "withoutscores"])
+@pytest.mark.parametrize(
+    "withscores",
+    [
+        (True, [(f"score-{i}".encode("utf8"), float(i)) for i in range(2, 5)]),
+        (False, [f"score-{i}".encode("utf8") for i in range(2, 5)]),
+    ],
+    ids=["withscores", "withoutscores"],
+)
 def test_zrange_withscores_happy_path(client, withscores, request):
     client = request.getfixturevalue(client)
     mapping = {f"score-{i}": float(i) for i in range(1, 11)}
@@ -448,8 +447,8 @@ def test_zrange_desc_happy_path(client, request):
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_zrange_byscore_happy_path(client, request):
     client = request.getfixturevalue(client)
-    mapping = {f"score-{i}": float(i*20) for i in range(1, 11)}
-    expected = [(f"score-{i}".encode("utf8"), float(i*20)) for i in range(2, 5)]
+    mapping = {f"score-{i}": float(i * 20) for i in range(1, 11)}
+    expected = [(f"score-{i}".encode("utf8"), float(i * 20)) for i in range(2, 5)]
     sorted_set_name = str(uuid.uuid4())
     val = client.zadd(sorted_set_name, mapping)
     assert val == len(mapping)
@@ -459,13 +458,16 @@ def test_zrange_byscore_happy_path(client, request):
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
-@pytest.mark.parametrize("withscores", [
-    (True, [(f"score-{i}".encode("utf8"), float(i*20)) for i in range(2, 5)]),
-    (False, [f"score-{i}".encode("utf8") for i in range(2, 5)]),
-])
+@pytest.mark.parametrize(
+    "withscores",
+    [
+        (True, [(f"score-{i}".encode("utf8"), float(i * 20)) for i in range(2, 5)]),
+        (False, [f"score-{i}".encode("utf8") for i in range(2, 5)]),
+    ],
+)
 def test_zrangebyscore_happy_path(client, withscores, request):
     client = request.getfixturevalue(client)
-    mapping = {f"score-{i}": float(i*20) for i in range(1, 11)}
+    mapping = {f"score-{i}": float(i * 20) for i in range(1, 11)}
     expected = withscores[1]
     sorted_set_name = str(uuid.uuid4())
     val = client.zadd(sorted_set_name, mapping)
@@ -475,14 +477,19 @@ def test_zrangebyscore_happy_path(client, withscores, request):
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
-@pytest.mark.parametrize("withscores", [
-    (True, [(f"score-{i}".encode("utf8"), float(i*20)) for i in range(10, 0, -1)]),
-    (False, [f"score-{i}".encode("utf8") for i in range(10, 0, -1)]),
-])
+@pytest.mark.parametrize(
+    "withscores",
+    [
+        (
+            True,
+            [(f"score-{i}".encode("utf8"), float(i * 20)) for i in range(10, 0, -1)],
+        ),
+        (False, [f"score-{i}".encode("utf8") for i in range(10, 0, -1)]),
+    ],
+)
 def test_zrevrange_happy_path(client, withscores, request):
     client = request.getfixturevalue(client)
-    mapping = {f"score-{i}": float(i*20) for i in range(1, 11)}
-    expected = withscores[1]
+    mapping = {f"score-{i}": float(i * 20) for i in range(1, 11)}
     sorted_set_name = str(uuid.uuid4())
     val = client.zadd(sorted_set_name, mapping)
     assert val == len(mapping)
@@ -491,13 +498,16 @@ def test_zrevrange_happy_path(client, withscores, request):
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
-@pytest.mark.parametrize("withscores", [
-    (True, [(f"score-{i}".encode("utf8"), float(i*20)) for i in range(4, 1, -1)]),
-    (False, [f"score-{i}".encode("utf8") for i in range(4, 1, -1)]),
-])
+@pytest.mark.parametrize(
+    "withscores",
+    [
+        (True, [(f"score-{i}".encode("utf8"), float(i * 20)) for i in range(4, 1, -1)]),
+        (False, [f"score-{i}".encode("utf8") for i in range(4, 1, -1)]),
+    ],
+)
 def test_zrevrangebyscore_happy_path(client, withscores, request):
     client = request.getfixturevalue(client)
-    mapping = {f"score-{i}": float(i*20) for i in range(1, 11)}
+    mapping = {f"score-{i}": float(i * 20) for i in range(1, 11)}
     expected = withscores[1]
     sorted_set_name = str(uuid.uuid4())
     val = client.zadd(sorted_set_name, mapping)
@@ -542,7 +552,7 @@ def test_lpop_happy_path(client, request):
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
-def test_lpop_happy_path(client, request):
+def test_rpop_happy_path(client, request):
     client = request.getfixturevalue(client)
     sorted_set_name = str(uuid.uuid4())
     the_list = ["one", "two", "three"]
@@ -561,4 +571,3 @@ def test_llen_happy_path(client, request):
     assert val == len(the_list)
     val = client.llen(sorted_set_name)
     assert val == len(the_list)
-
