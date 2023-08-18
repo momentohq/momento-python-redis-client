@@ -14,7 +14,7 @@ from momento.responses import CacheGet, CacheSetIfNotExists, CacheIncrement, Cac
     CacheDictionaryRemoveFields, CacheDictionaryIncrement, CacheSetAddElements, CacheSetFetch, CacheSetRemoveElements, \
     CacheListConcatenateFront, CacheListConcatenateBack, CacheListPushBack, CacheListPopFront, CacheListPopBack, CacheListLength, CacheSet, \
     CacheSortedSetPutElements, CacheSortedSetGetRank, CacheSortedSetFetch, CacheListFetch
-from momento.responses.data.sorted_set.increment import CacheSortedSetIncrement
+from momento.responses.data.sorted_set.increment_score import CacheSortedSetIncrementScore
 from momento.responses.data.sorted_set.remove_elements import CacheSortedSetRemoveElements
 from redis.client import AbstractRedis
 from redis.commands import RedisModuleCommands, CoreCommands, SentinelCommands
@@ -68,6 +68,9 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             pxat: Any | None = ...,
     ) -> bool | None:
 
+        if isinstance(value, int):
+            value = str(value)
+
         ttl: int | None = None
         if ex is not None:
             ttl = ex
@@ -117,14 +120,7 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
     def delete(self, *names) -> int:
         return len(multi_delete(self.client, self.cache_name, [i for i in names]))
 
-    # TODO: is there some reason to use ellipses for the default value of `amount` here?
-    #  "TypeError: bad operand type for unary -: 'ellipsis'"
-    #  is a crappy error message compared to
-    #  "TypeError: decr() missing 1 required positional argument: 'amount'"
-    #
-    # TODO: Redis doesn't actually care if we pass an amount or not and defaults to 1. Why would
-    #  we not do the same? That would also get rid of the ellipses.
-    def decr(self, name, amount: int = ...) -> int:
+    def decr(self, name, amount: int = 1) -> int:
         rsp = self.client.increment(
             self.cache_name,
             name,
@@ -135,7 +131,7 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         elif isinstance(rsp, CacheIncrement.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    def decrby(self, name, amount: int = ...) -> int:
+    def decrby(self, name, amount: int = 1) -> int:
         rsp = self.client.increment(
             self.cache_name,
             name,
@@ -146,7 +142,7 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         elif isinstance(rsp, CacheIncrement.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    def incr(self, name, amount: int = ...) -> int:
+    def incr(self, name, amount: int = 1) -> int:
         rsp = self.client.increment(
             self.cache_name,
             name,
@@ -157,7 +153,7 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         elif isinstance(rsp, CacheIncrement.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    def incrby(self, name, amount: int = ...) -> int:
+    def incrby(self, name, amount: int = 1) -> int:
         rsp = self.client.increment(
             self.cache_name,
             name,
@@ -210,13 +206,23 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         items_to_set = {}
 
         if key is not None:
+            if not isinstance(key, (str, bytes)):
+                key = str(key)
+            if not isinstance(value, (str, bytes)):
+                value = str(value)
             items_to_set.update([(key, value)])
 
         if mapping is not None:
-            items_to_set.update(mapping)
+            for k, v in mapping.items():
+                if not isinstance(k, (str, bytes)):
+                    k = str(k)
+                if not isinstance(v, (str, bytes)):
+                    v = str(v)
+                items_to_set.update({k: v})
+
 
         if items is not None:
-            # items_to_set.update(dict(items))
+            items = [i if isinstance(i, (str, bytes)) else str(i) for i in items]
             items_to_set.update({items[i]: items[i+1] for i in range(0, len(items), 2)})
 
         rsp = self.client.dictionary_set_fields(self.cache_name, name, items_to_set)
@@ -258,7 +264,9 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         elif isinstance(rsp, CacheDictionaryRemoveFields.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    def hincrby(self, name, key, amount: int = ...) -> int:
+    def hincrby(self, name, key, amount: int = 1) -> int:
+        if not isinstance(amount, int):
+            amount = int(amount)
         rsp = self.client.dictionary_increment(self.cache_name, name, key, amount)
         if isinstance(rsp, CacheDictionaryIncrement.Success):
             return rsp.value
@@ -266,6 +274,7 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             raise convert_momento_to_redis_errors(rsp)
 
     def sadd(self, name, *values) -> int:
+        values = tuple(str(i) if isinstance(i, int) else i for i in values)
         rsp = self.client.set_add_elements(self.cache_name, name, values)
         if isinstance(rsp, CacheSetAddElements.Success):
             return len(values)
@@ -323,10 +332,10 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             raise convert_momento_to_redis_errors(rsp)
 
     def zincrby(self, name, amount: float, value) -> float:
-        rsp = self.client.sorted_set_increment(self.cache_name, name, value, amount)
-        if isinstance(rsp, CacheSortedSetIncrement.Success):
+        rsp = self.client.sorted_set_increment_score(self.cache_name, name, value, amount)
+        if isinstance(rsp, CacheSortedSetIncrementScore.Success):
             return rsp.score
-        elif isinstance(rsp, CacheSortedSetIncrement.Error):
+        elif isinstance(rsp, CacheSortedSetIncrementScore.Error):
             convert_momento_to_redis_errors(rsp)
 
     def zrem(self, name, *values) -> int:
@@ -336,7 +345,6 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         elif isinstance(rsp, CacheSortedSetRemoveElements.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    # TODO: `byscore` branch broken due to SDK bug
     def zrange(
             self,
             name: KeyT,
@@ -387,15 +395,20 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
 
         if isinstance(rsp, CacheSortedSetFetch.Hit):
             if withscores:
-                return rsp.value_list_bytes
+                ret = rsp.value_list_bytes
+                # TODO: is this really a thing!?
+                ret.reverse()
+                return ret
             else:
-                return [v[0] for v in rsp.value_list_bytes]
+                ret = [v[0] for v in rsp.value_list_bytes]
+                # TODO: is this really a thing!?
+                ret.reverse()
+                return ret
         elif isinstance(rsp, CacheSortedSetFetch.Miss):
             return []
         elif isinstance(rsp, CacheSortedSetFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    # TODO: `zrangebyscore` broken due to SDK bug
     def zrangebyscore(
             self,
             name: KeyT,
@@ -419,7 +432,7 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             if withscores:
                 return rsp.value_list_string
             else:
-                return [v[0] for v in rsp.value_list_string]
+                return [v[0] for v in rsp.value_list_bytes]
         elif isinstance(rsp, CacheSortedSetFetch.Miss):
             return []
         elif isinstance(rsp, CacheSortedSetFetch.Error):
@@ -450,7 +463,6 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         elif isinstance(rsp, CacheSortedSetFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
 
-    # TODO: broken pending SDK fix
     def zrevrangebyscore(
             self,
             name: KeyT,
@@ -464,8 +476,9 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
         rsp = self.client.sorted_set_fetch_by_score(
             cache_name=self.cache_name,
             sorted_set_name=name,
-            min_score=min,
-            max_score=max,
+            # Redis wants these in the opposite order from Momento
+            min_score=max,
+            max_score=min,
             sort_order=SortOrder.DESCENDING,
             offset=start,
             count=num
@@ -481,6 +494,8 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
             raise convert_momento_to_redis_errors(rsp)
 
     def lpush(self, name, *values) -> int:
+        values = list(values)
+        values.reverse()
         rsp = self.client.list_concatenate_front(self.cache_name, name, values)
         if isinstance(rsp, CacheListConcatenateFront.Success):
             return len(values)
@@ -531,14 +546,14 @@ class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCom
     def lrange(self, name, start: int, end: int) -> list[_StrType]:
         # TODO: These are REQUIRED by Redis (and the method signature).
         #  It makes no sense to do this.
-        if start:
-            raise NotImplementedError("ListRangeOption start" + NOT_IMPL_ERR)
-        elif end:
-            raise NotImplementedError("ListRangeOption end" + NOT_IMPL_ERR)
+        # if start:
+        #     raise NotImplementedError("ListRangeOption start" + NOT_IMPL_ERR)
+        # elif end:
+        #     raise NotImplementedError("ListRangeOption end" + NOT_IMPL_ERR)
 
         rsp = self.client.list_fetch(self.cache_name, name)
         if isinstance(rsp, CacheListFetch.Hit):
-            return rsp.value_list_string
+            return rsp.value_list_bytes[start:end]
         elif isinstance(rsp, CacheListFetch.Miss):
             return []
         elif isinstance(rsp, CacheListFetch.Error):

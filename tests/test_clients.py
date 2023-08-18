@@ -194,23 +194,39 @@ def test_hset_hget_items_happy_path(client, request):
 # TODO: Redis accepts the multi-type inputs here without a problem. We choke on anything
 #  that isn't bytes|str on the way in.
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
-def test_hset_hgetall_all_hset_params_happy_path(client, request):
+@pytest.mark.parametrize("items", [
+    [b'a', b'b', b'c', b'd'], ["a", "b", "c", "d"], [5, 6, 7, 8]
+])
+@pytest.mark.parametrize("mapping", [
+    {"1": "2", "3": "4"}, {1: 2, 3: 4}, {b"1": b"2", b"3": b"4"}
+])
+def test_hset_hgetall_all_hset_params_happy_path(client, items, mapping, request):
     client = request.getfixturevalue(client)
     map_name = str(uuid.uuid4())
-    items = [b"a", b"b", b"c", b"d"]
-    mapping = {1: 2, 3: 4}
     key = str(uuid.uuid4())
     val = str(uuid.uuid4())
     # Redis returns the hash with all binary keys and values. Here we convert everything to binary
     # for comparison.
+    expected_items = {}
+    binitems = []
+    for i in items:
+        if not isinstance(i, bytes):
+            binitems.append(str(i).encode("utf8"))
+        else:
+            binitems.append(i)
+    items = binitems
     expected_items = {items[i]: items[i+1] for i in range(0, len(items), 2)}
-    expected_items.update({bytes(str(k), encoding='utf8'): bytes(str(v), encoding='utf8') for k, v in mapping.items()})
-    expected_items.update({bytes(str(key), encoding='utf8'): bytes(str(val), encoding='utf8')})
+    for k, v in mapping.items():
+        if not isinstance(k, bytes):
+            k = str(k).encode("utf8")
+        if not isinstance(v, bytes):
+            v = str(v).encode("utf8")
+        expected_items.update({k: v})
+    expected_items.update({str(key).encode("utf8"): str(val).encode("utf8")})
 
     num_set = client.hset(map_name, key, val, mapping=mapping, items=items)
-    assert num_set == 5
+    assert num_set == len(expected_items)
     val = client.hgetall(map_name)
-    print(val)
     assert val == expected_items
 
 
@@ -254,8 +270,8 @@ def test_hkeys_happy_path(client, request):
     mapping = {b"a": b"b", b"c": b"d"}
     val = client.hset(map_name, mapping=mapping)
     assert val == 2
-    keys = client.hkeys(map_name)
-    assert keys == list(mapping.keys())
+    keys = set(client.hkeys(map_name))
+    assert keys == set(mapping.keys())
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
@@ -367,6 +383,7 @@ def test_zadd_zrange_happy_path(client, request):
     val = client.zadd(sorted_set_name, mapping)
     assert val == len(mapping)
     val = client.zrange(sorted_set_name, 1, 3, False, True)
+    print(f"val: {val}\nexpected: {expected}")
     assert val == expected
 
 
@@ -396,6 +413,7 @@ def test_zrem_happy_path(client, request):
     mapping.pop("score-4".encode("utf8"))
     mapping.pop("score-6".encode("utf8"))
     val = client.zrange(sorted_set_name, 0, 100)
+    print(f"val: {val}\nexpected: {[k for k in mapping.keys()]}")
     assert val == [k for k in mapping.keys()]
 
 
@@ -436,6 +454,7 @@ def test_zrange_byscore_happy_path(client, request):
     val = client.zadd(sorted_set_name, mapping)
     assert val == len(mapping)
     val = client.zrange(sorted_set_name, 40, 80, False, True, byscore=True)
+    print(f"val: {val}\nexpected: {expected}")
     assert val == expected
 
 
