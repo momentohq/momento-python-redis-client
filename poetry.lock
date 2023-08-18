@@ -134,14 +134,14 @@ stevedore = ">=3.0.0"
 
 [[package]]
 name = "exceptiongroup"
-version = "1.1.2"
+version = "1.1.3"
 description = "Backport of PEP 654 (exception groups)"
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "exceptiongroup-1.1.2-py3-none-any.whl", hash = "sha256:e346e69d186172ca7cf029c8c1d16235aa0e04035e5750b4b95039e65204328f"},
-    {file = "exceptiongroup-1.1.2.tar.gz", hash = "sha256:12c3e887d6485d16943a309616de20ae5582633e0a2eda17f4e10fd61c1e8af5"},
+    {file = "exceptiongroup-1.1.3-py3-none-any.whl", hash = "sha256:343280667a4585d195ca1cf9cef84a4e178c4b6cf2274caef9859782b567d5e3"},
+    {file = "exceptiongroup-1.1.3.tar.gz", hash = "sha256:097acd85d473d75af5bb98e41b61ff7fe35efe6675e4f9370ec6ec5126d160e9"},
 ]
 
 [package.extras]
@@ -164,6 +164,22 @@ importlib-metadata = {version = ">=1.1.0,<4.3", markers = "python_version < \"3.
 mccabe = ">=0.7.0,<0.8.0"
 pycodestyle = ">=2.9.0,<2.10.0"
 pyflakes = ">=2.5.0,<2.6.0"
+
+[[package]]
+name = "flake8-docstrings"
+version = "1.7.0"
+description = "Extension for flake8 which uses pydocstyle to check docstrings"
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "flake8_docstrings-1.7.0-py2.py3-none-any.whl", hash = "sha256:51f2344026da083fc084166a9353f5082b01f72901df422f74b4d953ae88ac75"},
+    {file = "flake8_docstrings-1.7.0.tar.gz", hash = "sha256:4c8cc748dc16e6869728699e5d0d685da9a10b0ea718e090b1ba088e67a941af"},
+]
+
+[package.dependencies]
+flake8 = ">=3"
+pydocstyle = ">=2.1"
 
 [[package]]
 name = "flask"
@@ -505,42 +521,43 @@ files = [
 
 [[package]]
 name = "momento"
-version = "1.3.0"
+version = "1.7.1"
 description = "SDK for Momento"
 category = "main"
 optional = false
-python-versions = ">=3.7,<3.12"
+python-versions = ">=3.7,<4.0"
 files = [
-    {file = "momento-1.3.0-py3-none-any.whl", hash = "sha256:a613d8a97e5c2d483e96922827e0005b789fa6c893193a84c79599c39e65546d"},
-    {file = "momento-1.3.0.tar.gz", hash = "sha256:4c54fbd5f4d21214637dc6e1110b6a5c89cb8c3d2970811afb992ceab50229f7"},
+    {file = "momento-1.7.1-py3-none-any.whl", hash = "sha256:b5b37a7c0015ed98a52a05e156babf58c0cd222771d5e3b83a10b5e2cd821e61"},
+    {file = "momento-1.7.1.tar.gz", hash = "sha256:15a627c67de8e95eb9269ce31590650c1289ef8baa793dac4a507329e8e60469"},
 ]
 
 [package.dependencies]
-grpcio = ">=1.50.0,<2.0.0"
-momento-wire-types = ">=0.60,<0.61"
+grpcio = ">=1.46.0,<2.0.0"
+importlib-metadata = {version = ">=4", markers = "python_version < \"3.8\""}
+momento-wire-types = ">=0.67,<0.68"
 pyjwt = ">=2.4.0,<3.0.0"
 
 [[package]]
 name = "momento-wire-types"
-version = "0.60.4"
+version = "0.67.0"
 description = "Momento Client Proto Generated Files"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7,<4.0"
 files = [
-    {file = "momento-wire-types-0.60.4.tar.gz", hash = "sha256:6ada98201559ef0fe8ba4b4ca9dc3b0f9aae2c09a45d95a130509ad57605c13c"},
-    {file = "momento_wire_types-0.60.4-py3-none-any.whl", hash = "sha256:a2dde908074176bc5b71f49e87d6653943051ce3089ecf668f9dbfe0328690c4"},
+    {file = "momento_wire_types-0.67.0-py3-none-any.whl", hash = "sha256:b596b45fe20534afba57c57cad50f70cc2b77c0d090646165d4bce66165ed290"},
+    {file = "momento_wire_types-0.67.0.tar.gz", hash = "sha256:64fb30794940e6004b4e678b52b8b2728e3fce4390ac427a38054615795165c4"},
 ]
 
 [package.dependencies]
 grpcio = "*"
-protobuf = "*"
+protobuf = ">=3,<5"
 
 [[package]]
 name = "mypy"
 version = "0.971"
 description = "Optional static typing for Python"
-category = "main"
+category = "dev"
 optional = false
 python-versions = ">=3.6"
 files = [
@@ -702,6 +719,25 @@ files = [
 ]
 
 [[package]]
+name = "pydocstyle"
+version = "6.3.0"
+description = "Python docstring style checker"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pydocstyle-6.3.0-py3-none-any.whl", hash = "sha256:118762d452a49d6b05e194ef344a55822987a462831ade91ec5c06fd2169d019"},
+    {file = "pydocstyle-6.3.0.tar.gz", hash = "sha256:7ce43f0c0ac87b07494eb9c0b462c0b73e6ff276807f204d6b53edc72b7e44e1"},
+]
+
+[package.dependencies]
+importlib-metadata = {version = ">=2.0.0,<5.0.0", markers = "python_version < \"3.8\""}
+snowballstemmer = ">=2.2.0"
+
+[package.extras]
+toml = ["tomli (>=1.2.3)"]
+
+[[package]]
 name = "pyflakes"
 version = "2.5.0"
 description = "passive checker of Python programs"
@@ -797,6 +833,18 @@ typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 [package.extras]
 hiredis = ["hiredis (>=1.0.0)"]
 ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==20.0.1)", "requests (>=2.26.0)"]
+
+[[package]]
+name = "snowballstemmer"
+version = "2.2.0"
+description = "This package provides 29 stemmers for 28 languages generated from Snowball algorithms."
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "snowballstemmer-2.2.0-py2.py3-none-any.whl", hash = "sha256:c8e1716e83cc398ae16824e5572ae04e0d9fc2c6b985fb0f900f5f0c96ecba1a"},
+    {file = "snowballstemmer-2.2.0.tar.gz", hash = "sha256:09b16deb8547d3412ad7b590689584cd0fe25ec8db3be37788be3810cbf19cb1"},
+]
 
 [[package]]
 name = "sqlalchemy"
@@ -957,6 +1005,33 @@ files = [
 ]
 
 [[package]]
+name = "types-docutils"
+version = "0.20.0.3"
+description = "Typing stubs for docutils"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-docutils-0.20.0.3.tar.gz", hash = "sha256:4928e790f42b99d5833990f99c8dd9fa9f16825f6ed30380ca981846d36870cd"},
+    {file = "types_docutils-0.20.0.3-py3-none-any.whl", hash = "sha256:a930150d8e01a9170f9bca489f46808ddebccdd8bc1e47c07968a77e49fb9321"},
+]
+
+[[package]]
+name = "types-setuptools"
+version = "65.7.0.4"
+description = "Typing stubs for setuptools"
+category = "dev"
+optional = false
+python-versions = "*"
+files = [
+    {file = "types-setuptools-65.7.0.4.tar.gz", hash = "sha256:147809433301fe7e0f4ef5c0782f9a0453788960575e1efb6da5fe8cb2493c9f"},
+    {file = "types_setuptools-65.7.0.4-py3-none-any.whl", hash = "sha256:522067dfd8e1771f8d7e047e451de2740dc4e0c9f48a22302a6cc96e6c964a13"},
+]
+
+[package.dependencies]
+types-docutils = "*"
+
+[[package]]
 name = "typing-extensions"
 version = "4.5.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -1005,4 +1080,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.7,<3.12"
-content-hash = "4eac4ef936cd368ef5520a82abede594ad8d128b9504b66071585cc9f223b6c6"
+content-hash = "f97387996156943db151f3fdadbd7388b36663937a6bb349293053f200c0b986"
