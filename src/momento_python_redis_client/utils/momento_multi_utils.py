@@ -1,22 +1,33 @@
 import asyncio
-from typing import List
+from typing import List, TypeVar, Union
 
 from momento import CacheClient
-from momento.responses import CacheDelete, CacheGet, CacheSet
-from momento.typing import TDictionaryItems
+from momento.responses import (
+    CacheDelete,
+    CacheDeleteResponse,
+    CacheGet,
+    CacheGetResponse,
+    CacheSet,
+    CacheSetResponse,
+)
+from momento.typing import Iterable, TDictionaryItems
 
 from .error_utils import convert_momento_to_redis_errors
 
+_StrType = TypeVar("_StrType", bound=Union[str, bytes])
+
 
 # TODO: ????
-def multi_get(client: CacheClient, cache_name: str, keys: List[str]):
+def multi_get(
+    client: CacheClient, cache_name: str, keys: Union[_StrType, Iterable[_StrType]]
+) -> List[Union[bytes, None]]:
     promises = []
     for k in keys:
-        promises.append(aio_get_wrapper(client, cache_name, k))
+        promises.append(aio_get_wrapper(client, cache_name, k))  # type: ignore
 
     responses = asyncio.gather(*promises, return_exceptions=True)
 
-    values = []
+    values: List[Union[bytes, None]] = []
     for rsp in responses:
         if isinstance(rsp, CacheGet.Hit):
             values.append(rsp.value_bytes)
@@ -28,13 +39,13 @@ def multi_get(client: CacheClient, cache_name: str, keys: List[str]):
     return values
 
 
-async def aio_get_wrapper(client: CacheClient, cache_name: str, key: str):
+async def aio_get_wrapper(client: CacheClient, cache_name: str, key: str) -> CacheGetResponse:
     return client.get(cache_name, key)
 
 
-def multi_set(client: CacheClient, cache_name: str, mapping: TDictionaryItems):
+def multi_set(client: CacheClient, cache_name: str, mapping: TDictionaryItems) -> bool:
     promises = []
-    for k, v in mapping:
+    for k, v in mapping.items():
         promises.append(aio_set_wrapper(client=client, cache_name=cache_name, key=k, val=v))
 
     responses = asyncio.gather(*promises, return_exceptions=True)
@@ -45,11 +56,13 @@ def multi_set(client: CacheClient, cache_name: str, mapping: TDictionaryItems):
     return True
 
 
-async def aio_set_wrapper(client: CacheClient, cache_name: str, key: str, val):
+async def aio_set_wrapper(
+    client: CacheClient, cache_name: str, key: Union[str, bytes], val: Union[str, bytes]
+) -> CacheSetResponse:
     return client.set(cache_name, key, val)
 
 
-def multi_delete(client: CacheClient, cache_name: str, keys: List[str]):
+def multi_delete(client: CacheClient, cache_name: str, keys: List[str]) -> List[bool]:
     promises = []
     for k in keys:
         promises.append(aio_delete_wrapper(client=client, cache_name=cache_name, key=k))
@@ -65,5 +78,5 @@ def multi_delete(client: CacheClient, cache_name: str, keys: List[str]):
     return values
 
 
-async def aio_delete_wrapper(client: CacheClient, cache_name: str, key: str):
+async def aio_delete_wrapper(client: CacheClient, cache_name: str, key: str) -> CacheDeleteResponse:
     return client.delete(cache_name, key)

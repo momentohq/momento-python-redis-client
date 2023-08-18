@@ -2,13 +2,24 @@
 from __future__ import annotations
 
 import builtins
-import time
+import datetime
 import warnings
 from datetime import timedelta
-from typing import Any, Callable, Generic, Iterable, Literal, Optional, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 import redis
 from momento import CacheClient
+from momento.errors import UnknownException
 from momento.requests import SortOrder
 from momento.responses import (
     CacheDictionaryFetch,
@@ -41,7 +52,7 @@ from momento.responses.data.sorted_set.remove_elements import (
 )
 from redis.client import AbstractRedis
 from redis.commands import CoreCommands, RedisModuleCommands, SentinelCommands
-from redis.typing import KeyT, ZScoreBoundT
+from redis.typing import AbsExpiryT, EncodableT, ExpiryT, KeyT, ZScoreBoundT
 
 from .utils.error_utils import convert_momento_to_redis_errors
 from .utils.momento_multi_utils import multi_delete, multi_get, multi_set
@@ -55,13 +66,10 @@ NOT_IMPL_ERR = (
 )
 
 
-# TODO: subscripting CoreCommands results in
-#  'TypeError: <class 'redis.commands.core.CoreCommands'> is not a generic class'
-# class MomentoRedis(AbstractRedis, RedisModuleCommands, CoreCommands[_StrType], SentinelCommands, Generic[_StrType]):
 class MomentoRedis(
     AbstractRedis,
     RedisModuleCommands,
-    CoreCommands,
+    CoreCommands,  # type: ignore
     SentinelCommands,
     Generic[_StrType],
 ):
@@ -69,49 +77,33 @@ class MomentoRedis(
         self.client = client
         self.cache_name = cache_name
 
-    def get(self, name) -> Optional[_StrType]:
-        # rsp = self.client.get("default", name)
+    def get(self, name: KeyT) -> Optional[_StrType]:
         rsp = self.client.get(self.cache_name, name)
         if isinstance(rsp, CacheGet.Hit):
-            # TODO: Redis is returning bytes . . . discuss with Ellery
-            # return rsp.value_string
-            return rsp.value_bytes
+            return rsp.value_bytes  # type: ignore
         elif isinstance(rsp, CacheGet.Miss):
             return None
         elif isinstance(rsp, CacheGet.Error):
             raise convert_momento_to_redis_errors(rsp)
+        else:
+            raise UnknownException(f"Unknown response type: {rsp}")
 
-    def mget(self, keys: _StrType | Iterable[_StrType], *args: _StrType) -> list[_StrType | None]:
+    def mget(self, keys: _StrType | Iterable[_StrType], *args: _StrType) -> List[Optional[bytes]]:  # type: ignore
         return multi_get(self.client, self.cache_name, keys)
 
     def set(
         self,
-        name,
-        value,
-        ex: None | int | timedelta = ...,
-        px: None | int | timedelta = ...,
-        nx: bool = ...,
-        xx: bool = ...,
-        keepttl: bool = ...,
-        get: bool = ...,
-        exat: Any | None = ...,
-        pxat: Any | None = ...,
+        name: KeyT,
+        value: EncodableT,
+        ex: Union[ExpiryT, None] = None,
+        px: Union[ExpiryT, None] = None,
+        nx: bool = False,
+        xx: bool = False,
+        keepttl: bool = False,
+        get: bool = False,
+        exat: Union[AbsExpiryT, None] = None,
+        pxat: Union[AbsExpiryT, None] = None,
     ) -> bool | None:
-
-        if isinstance(value, int):
-            value = str(value)
-
-        ttl: int | None = None
-        if ex is not None:
-            ttl = ex
-        elif px is not None:
-            ttl = int(px / 1000)
-        elif exat is not None:
-            ttl = exat - int(time.time())
-        elif pxat is not None:
-            ttl = pxat - int(time.time() / 1000)
-        elif keepttl:
-            raise NotImplementedError("SetOption KEEPTTL" + NOT_IMPL_ERR)
 
         if nx:
             return self.setnx(name, value)
@@ -121,16 +113,52 @@ class MomentoRedis(
         if get:
             raise NotImplementedError("SetOption GET" + NOT_IMPL_ERR)
 
-        rsp = self.client.set(self.cache_name, name, value, ttl)
+        if isinstance(value, (float, int)):
+            value = str(value)
+
+        ttl: Optional[ExpiryT] = None
+        if ex is not None:
+            ttl = ex
+        elif px is not None:
+            # TODO: is this anywhere close to correct?
+            if isinstance(px, float):
+                ttl = int(px / 1000)
+            else:
+                ttl = px
+        elif exat is not None:
+            # TODO: is this anywhere close to correct?
+            if isinstance(exat, int):
+                ttl = timedelta(seconds=exat)
+            else:
+                ttl = exat - datetime.datetime.now()
+        elif pxat is not None:
+            # TODO: is this anywhere close to correct?
+            if isinstance(pxat, int):
+                ttl = timedelta(milliseconds=pxat)
+            else:
+                ttl = pxat - datetime.datetime.now()
+        elif keepttl:
+            raise NotImplementedError("SetOption KEEPTTL" + NOT_IMPL_ERR)
+
+        if isinstance(ttl, int):
+            ttl = timedelta(seconds=ttl)
+
+        rsp = self.client.set(self.cache_name, name, value, ttl)  # type: ignore
         if isinstance(rsp, CacheSet.Error):
             raise convert_momento_to_redis_errors(rsp)
 
         return True
 
-    def mset(self, mapping) -> Literal[True]:
+    def mset(self, mapping: Dict) -> bool:  # type: ignore
         return multi_set(self.client, self.cache_name, mapping)
 
-    def setnx(self, name, value) -> bool:
+    def setnx(self, name: KeyT, value: EncodableT) -> bool:
+        # TODO: refactor me if I'm actually a good idea next week :-)
+        #  Also improve handling of `bytes` so we don't end up with crap like "b'hi'"
+        if not isinstance(name, str):
+            name = str(name)
+        if isinstance(value, (float, int)):
+            value = str(value)
         rsp = self.client.set_if_not_exists(self.cache_name, key=name, value=value)
         if isinstance(rsp, CacheSetIfNotExists.Stored):
             return True
@@ -138,19 +166,27 @@ class MomentoRedis(
             return False
         elif isinstance(rsp, CacheSetIfNotExists.Error):
             raise convert_momento_to_redis_errors(rsp)
+        else:
+            raise UnknownException(f"Unknown response type: {rsp}")
 
-    def setex(self, name, time: int | timedelta, value) -> bool:
+    def setex(self, name: KeyT, time: ExpiryT, value: EncodableT) -> bool:
+        # TODO: refactor me if I'm actually a good idea next week :-)
+        #  Also improve handling of `bytes` so we don't end up with crap like "b'hi'"
+        if not isinstance(name, str):
+            name = str(name)
         if isinstance(time, int):
             time = timedelta(seconds=time)
-        rsp = self.client.set(self.cache_name, name, value, time)
+        if not isinstance(value, (str, bytes, memoryview)):
+            value = str(value)
+        rsp = self.client.set(self.cache_name, name, value, time)  # type: ignore
         if isinstance(rsp, CacheSet.Error):
             raise convert_momento_to_redis_errors(rsp)
         return True
 
-    def delete(self, *names) -> int:
-        return len(multi_delete(self.client, self.cache_name, [i for i in names]))
+    def delete(self, *names: KeyT) -> int:
+        return len(multi_delete(self.client, self.cache_name, [str(i) for i in names]))
 
-    def decr(self, name, amount: int = 1) -> int:
+    def decr(self, name: KeyT, amount: int = 1) -> int:
         rsp = self.client.increment(self.cache_name, name, -amount)
         if isinstance(rsp, CacheIncrement.Success):
             return rsp.value
@@ -181,8 +217,6 @@ class MomentoRedis(
     def hget(self, name, key) -> _StrType | None:
         rsp = self.client.dictionary_get_field(self.cache_name, name, key)
         if isinstance(rsp, CacheDictionaryGetField.Hit):
-            # TODO: Redis returns bytes
-            # return rsp.value_string
             return rsp.value_bytes
         elif isinstance(rsp, CacheDictionaryGetField.Miss):
             return None
@@ -192,15 +226,11 @@ class MomentoRedis(
     def hmget(self, name, keys: _StrType | Iterable[_StrType], *args: _StrType) -> list[_StrType | None]:
         rsp = self.client.dictionary_get_fields(self.cache_name, name, keys)
         if isinstance(rsp, CacheDictionaryGetFields.Hit):
-            # TODO: Redis returns these as bytes.
-            # return list(rsp.value_dictionary_string_string.values())
             return list(rsp.value_dictionary_bytes_bytes.values())
 
     def hgetall(self, name) -> dict[_StrType, _StrType]:
         rsp = self.client.dictionary_fetch(self.cache_name, name)
         if isinstance(rsp, CacheDictionaryFetch.Hit):
-            # TODO: Redis returns this as bytes
-            # return rsp.value_dictionary_string_string
             return rsp.value_dictionary_bytes_bytes
         elif isinstance(rsp, CacheDictionaryFetch.Miss):
             return {}
@@ -260,8 +290,6 @@ class MomentoRedis(
         # TODO once have api to just fetch keys use that instead
         rsp = self.client.dictionary_fetch(self.cache_name, name)
         if isinstance(rsp, CacheDictionaryFetch.Hit):
-            # TODO: Redis returns bytes
-            # return list(rsp.value_dictionary_string_string.keys())
             return list(rsp.value_dictionary_bytes_bytes.keys())
         elif isinstance(rsp, CacheDictionaryFetch.Miss):
             return []
@@ -269,7 +297,6 @@ class MomentoRedis(
             raise convert_momento_to_redis_errors(rsp)
 
     def hdel(self, name, *keys) -> int:
-        # TODO: Ugh. Make sure keys are getting handled properly here.
         rsp = self.client.dictionary_remove_fields(self.cache_name, name, keys)
         if isinstance(rsp, CacheDictionaryRemoveFields.Success):
             return len(keys)
@@ -296,8 +323,6 @@ class MomentoRedis(
     def smembers(self, name) -> builtins.set[_StrType]:
         rsp = self.client.set_fetch(self.cache_name, name)
         if isinstance(rsp, CacheSetFetch.Hit):
-            # TODO: Redis returns bytes
-            # return rsp.value_set_string
             return rsp.value_set_bytes
         elif isinstance(rsp, CacheSetFetch.Error):
             raise convert_momento_to_redis_errors(rsp)
@@ -305,8 +330,6 @@ class MomentoRedis(
     def srem(self, name, *values) -> int:
         rsp = self.client.set_remove_elements(self.cache_name, name, values)
         if isinstance(rsp, CacheSetRemoveElements.Success):
-            # TODO: this always returns 1
-            # return len([values])
             return len(values)
         elif isinstance(rsp, CacheSetRemoveElements.Error):
             raise convert_momento_to_redis_errors(rsp)
@@ -373,8 +396,8 @@ class MomentoRedis(
         num: int | None = None,
     ) -> list[tuple[_StrType, float | int]] | list[_StrType]:
 
-        # TODO: `KeyT` is `Union[bytes, str, memoryview]` so we need to make sure
-        #  to cast `name` to str
+        if not isinstance(name, str):
+            name = str(name)
 
         sort_order = SortOrder.ASCENDING
         if desc:
