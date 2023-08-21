@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import timedelta
-from typing import Any, Iterable, Iterator
 
 import momento
 import pytest

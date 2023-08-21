@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import datetime
 import time
-from datetime import timedelta
 from typing import Generic, Optional, TypeVar, Union
 
 from momento import CacheClient
@@ -75,32 +74,32 @@ class MomentoRedis(
         ttl: Optional[ExpiryT] = None
         if ex is not None:
             if isinstance(ex, int):
-                ttl = timedelta(seconds=ex)
-            elif isinstance(ttl, timedelta):
+                ttl = datetime.timedelta(seconds=ex)
+            elif isinstance(ex, datetime.timedelta):
                 ttl = ex
             else:
                 raise UnknownException(f"Unknown type for ex: {type(ex)}")
         elif px is not None:
             if isinstance(px, int):
-                ttl = timedelta(seconds=int(px / 1000))
+                ttl = datetime.timedelta(seconds=int(px / 1000))
             else:
                 ttl = px
         elif exat is not None:
             # TODO: is this anywhere close to correct?
             if isinstance(exat, int):
-                ttl = timedelta(seconds=exat - time.time())
+                ttl = datetime.timedelta(seconds=exat - time.time())
             elif isinstance(exat, datetime.datetime):
                 ttl = exat - datetime.datetime.now()
         elif pxat is not None:
             # TODO: is this anywhere close to correct? I don't see how this could be implemented
             #  differently from exat at all?
             if isinstance(pxat, int):
-                ttl = timedelta(seconds=pxat - time.time())
+                ttl = datetime.timedelta(seconds=pxat - time.time())
             else:
                 ttl = pxat - datetime.datetime.now()
 
         if isinstance(ttl, int):
-            ttl = timedelta(seconds=ttl)
+            ttl = datetime.timedelta(seconds=ttl)
 
         if nx:
             rsp = self.client.set_if_not_exists(self.cache_name, key=name, value=value, ttl=ttl)  # type: ignore
@@ -136,7 +135,7 @@ class MomentoRedis(
 
     def setex(self, name: KeyT, time: ExpiryT, value: EncodableT) -> bool:
         if isinstance(time, int):
-            time = timedelta(seconds=time)
+            time = datetime.timedelta(seconds=time)
         if not isinstance(value, (str, bytes)):
             value = str(value)
         rsp = self.client.set(self.cache_name, name, value, ttl=time)  # type: ignore
