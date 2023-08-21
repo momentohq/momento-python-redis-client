@@ -1,14 +1,11 @@
+import datetime
 import time
 import uuid
-from datetime import timedelta
 
 import pytest
 import redis
 
 
-# TODO: we're throwing the wrong type of error for this, yes? The same cause should return
-#  the same exception unless we don't care about breaking exception handling
-# @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"], ids=["redis", "momento"])
 @pytest.mark.parametrize(
     "client,exception",
     [
@@ -33,19 +30,89 @@ def test_set_get_happy_path(client, request):
     assert val == b"bar"
 
 
-# TODO: this test fails with `RuntimeError: await wasn't used with future`, which originates from
-#  the implementation of `multi_get()`
-@pytest.mark.skip("skipping until we get multi async stuff sorted out")
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
-def test_mget_happy_path(client, request):
+def test_set_bytes_key_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    key = str(uuid.uuid4()).encode("utf8")
+    client.set(key, "bar")
+    val = client.get(key)
+    assert val == b"bar"
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_set_with_int_ex_happy_path(client, request):
     client = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    client.set(f"{key}-1", "bar1")
-    client.set(f"{key}-2", "bar2")
-    client.set(f"{key}-3", "bar3")
-    val = client.mget([f"{key}-1", f"{key}-2", f"{key}-3"])
-    # TODO: val is a coroutine, but mget is ostensibly synchronous
-    assert val == [b"bar1", b"bar2", b"bar3"]
+    client.set(key, "bar", ex=3)
+    val = client.get(key)
+    assert val == b"bar"
+    time.sleep(3)
+    val = client.get(key)
+    assert val is None
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_set_with_timespan_ex_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    client.set(key, "bar", ex=datetime.timedelta(seconds=3))
+    val = client.get(key)
+    assert val == b"bar"
+    time.sleep(3)
+    val = client.get(key)
+    assert val is None
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_set_with_int_px_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    client.set(key, "bar", px=2500)
+    val = client.get(key)
+    assert val == b"bar"
+    time.sleep(3)
+    val = client.get(key)
+    assert val is None
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_set_with_timespan_px_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    client.set(key, "bar", px=datetime.timedelta(milliseconds=2500))
+    val = client.get(key)
+    assert val == b"bar"
+    time.sleep(3)
+    val = client.get(key)
+    assert val is None
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_set_with_int_exat_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    secs_now = int(time.time())
+    exat = secs_now + 3
+    client.set(key, "bar", exat=exat)
+    val = client.get(key)
+    assert val == b"bar"
+    time.sleep(3)
+    val = client.get(key)
+    assert val is None
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_set_with_datetime_exat_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    datetime_now = datetime.datetime.now()
+    exat = datetime_now + datetime.timedelta(seconds=3)
+    client.set(key, "bar", exat=exat)
+    val = client.get(key)
+    assert val == b"bar"
+    time.sleep(3)
+    val = client.get(key)
+    assert val is None
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
@@ -59,15 +126,39 @@ def test_setnx_happy_path(client, request):
 
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_setnx_bytes_key_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    key = str(uuid.uuid4()).encode("utf8")
+    client.setnx(key, "bar")
+    val = client.get(key)
+    assert val == b"bar"
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_setex_happy_path(client, request):
     client = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    client.setex(key, timedelta(seconds=2), "bar")
+    client.setex(key, datetime.timedelta(seconds=2), "bar")
     val = client.get(key)
     assert val == b"bar"
     time.sleep(2)
     val = client.get(key)
     assert val is None
+
+
+# TODO: this test fails with `RuntimeError: await wasn't used with future`, which originates from
+#  the implementation of `multi_get()`
+# @pytest.mark.skip("skipping until we get multi async stuff sorted out")
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+def test_mget_happy_path(client, request):
+    client = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    client.set(f"{key}-1", "bar1")
+    client.set(f"{key}-2", "bar2")
+    client.set(f"{key}-3", "bar3")
+    val = client.mget([f"{key}-1", f"{key}-2", f"{key}-3"])
+    # TODO: val is a coroutine, but mget is ostensibly synchronous
+    assert val == [b"bar1", b"bar2", b"bar3"]
 
 
 # TODO: this fails because it is using multi_delete behind the scenes, which has the same red/blue problem

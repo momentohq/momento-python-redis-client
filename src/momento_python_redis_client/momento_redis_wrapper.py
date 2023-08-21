@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import builtins
 import datetime
+import time
 import warnings
 from datetime import timedelta
 from typing import (
@@ -98,20 +99,21 @@ class MomentoRedis(
         ex: Union[ExpiryT, None] = None,
         px: Union[ExpiryT, None] = None,
         nx: bool = False,
-        xx: bool = False,
-        keepttl: bool = False,
-        get: bool = False,
+        xx: bool = False,  # not implemented
+        keepttl: bool = False,  # not implemented
+        get: bool = False,  # not implemented
         exat: Union[AbsExpiryT, None] = None,
         pxat: Union[AbsExpiryT, None] = None,
     ) -> bool | None:
 
-        if nx:
-            return self.setnx(name, value)
-        elif xx:
+        if xx:
             raise NotImplementedError("SetOption XX" + NOT_IMPL_ERR)
 
         if get:
             raise NotImplementedError("SetOption GET" + NOT_IMPL_ERR)
+
+        if keepttl:
+            raise NotImplementedError("SetOption KEEPTTL" + NOT_IMPL_ERR)
 
         if isinstance(value, (float, int)):
             value = str(value)
@@ -120,44 +122,51 @@ class MomentoRedis(
         if ex is not None:
             ttl = ex
         elif px is not None:
-            # TODO: is this anywhere close to correct?
-            if isinstance(px, float):
+            if isinstance(px, int):
                 ttl = int(px / 1000)
             else:
                 ttl = px
         elif exat is not None:
             # TODO: is this anywhere close to correct?
             if isinstance(exat, int):
-                ttl = timedelta(seconds=exat)
-            else:
+                ttl = timedelta(seconds=exat - time.time())
+            elif isinstance(exat, datetime.datetime):
                 ttl = exat - datetime.datetime.now()
         elif pxat is not None:
-            # TODO: is this anywhere close to correct?
+            # TODO: is this anywhere close to correct? I don't see how this could be implemented
+            #  differently from exat at all?
             if isinstance(pxat, int):
-                ttl = timedelta(milliseconds=pxat)
+                ttl = timedelta(seconds=pxat - time.time())
             else:
                 ttl = pxat - datetime.datetime.now()
-        elif keepttl:
-            raise NotImplementedError("SetOption KEEPTTL" + NOT_IMPL_ERR)
 
         if isinstance(ttl, int):
             ttl = timedelta(seconds=ttl)
 
-        rsp = self.client.set(self.cache_name, name, value, ttl)  # type: ignore
-        if isinstance(rsp, CacheSet.Error):
-            raise convert_momento_to_redis_errors(rsp)
-
-        return True
+        if nx:
+            rsp = self.client.set_if_not_exists(self.cache_name, key=name, value=value, ttl=ttl)
+            if isinstance(rsp, CacheSetIfNotExists.Error):
+                raise convert_momento_to_redis_errors(rsp)
+            elif isinstance(rsp, CacheSetIfNotExists.NotStored):
+                return False
+            elif isinstance(rsp, CacheSetIfNotExists.Stored):
+                return True
+            else:
+                raise UnknownException(f"Unknown response type: {rsp}")
+        else:
+            rsp = self.client.set(self.cache_name, name, value, ttl)  # type: ignore
+            if isinstance(rsp, CacheSet.Error):
+                raise convert_momento_to_redis_errors(rsp)
+            elif isinstance(rsp, CacheSet.Success):
+                return True
+            else:
+                raise UnknownException(f"Unknown response type: {rsp}")
 
     def mset(self, mapping: Dict) -> bool:  # type: ignore
         return multi_set(self.client, self.cache_name, mapping)
 
     def setnx(self, name: KeyT, value: EncodableT) -> bool:
-        # TODO: refactor me if I'm actually a good idea next week :-)
-        #  Also improve handling of `bytes` so we don't end up with crap like "b'hi'"
-        if not isinstance(name, str):
-            name = str(name)
-        if isinstance(value, (float, int)):
+        if not isinstance(value, (str, bytes)):
             value = str(value)
         rsp = self.client.set_if_not_exists(self.cache_name, key=name, value=value)
         if isinstance(rsp, CacheSetIfNotExists.Stored):
@@ -170,15 +179,11 @@ class MomentoRedis(
             raise UnknownException(f"Unknown response type: {rsp}")
 
     def setex(self, name: KeyT, time: ExpiryT, value: EncodableT) -> bool:
-        # TODO: refactor me if I'm actually a good idea next week :-)
-        #  Also improve handling of `bytes` so we don't end up with crap like "b'hi'"
-        if not isinstance(name, str):
-            name = str(name)
         if isinstance(time, int):
             time = timedelta(seconds=time)
-        if not isinstance(value, (str, bytes, memoryview)):
+        if not isinstance(value, (str, bytes)):
             value = str(value)
-        rsp = self.client.set(self.cache_name, name, value, time)  # type: ignore
+        rsp = self.client.set(self.cache_name, name, value, ttl=time)  # type: ignore
         if isinstance(rsp, CacheSet.Error):
             raise convert_momento_to_redis_errors(rsp)
         return True
