@@ -3,18 +3,14 @@ from __future__ import annotations
 
 import datetime
 import time
-from typing import Generic, Optional, TypeVar, Union
+from typing import Optional, Union
 
 from momento import CacheClient
 from momento.errors import UnknownException
 from momento.responses import CacheDelete, CacheGet, CacheSet, CacheSetIfNotExists
-from redis.client import AbstractRedis
-from redis.commands import CoreCommands, RedisModuleCommands, SentinelCommands
 from redis.typing import AbsExpiryT, EncodableT, ExpiryT, KeyT
 
 from .utils.error_utils import convert_momento_to_redis_errors
-
-_StrType = TypeVar("_StrType", bound=Union[str, bytes])
 
 NOT_IMPL_ERR = (
     " is not yet implemented in MomentoRedisClient. Please drop by our Discord at "
@@ -23,21 +19,15 @@ NOT_IMPL_ERR = (
 )
 
 
-class MomentoRedis(
-    AbstractRedis,
-    RedisModuleCommands,
-    CoreCommands,  # type: ignore
-    SentinelCommands,
-    Generic[_StrType],
-):
+class MomentoRedis:
     def __init__(self, client: CacheClient, cache_name: str):
         self.client = client
         self.cache_name = cache_name
 
-    def get(self, name: KeyT) -> Optional[_StrType]:
+    def get(self, name: KeyT) -> Optional[bytes]:
         rsp = self.client.get(self.cache_name, name)
         if isinstance(rsp, CacheGet.Hit):
-            return rsp.value_bytes  # type: ignore
+            return rsp.value_bytes
         elif isinstance(rsp, CacheGet.Miss):
             return None
         elif isinstance(rsp, CacheGet.Error):
@@ -71,7 +61,7 @@ class MomentoRedis(
         if isinstance(value, (float, int)):
             value = str(value)
 
-        ttl: Optional[ExpiryT] = None
+        ttl: Optional[datetime.timedelta] = None
         if ex is not None:
             if isinstance(ex, int):
                 ttl = datetime.timedelta(seconds=ex)
@@ -82,7 +72,7 @@ class MomentoRedis(
         elif px is not None:
             if isinstance(px, int):
                 ttl = datetime.timedelta(seconds=int(px / 1000))
-            else:
+            elif isinstance(px, datetime.timedelta):
                 ttl = px
         elif exat is not None:
             # TODO: is this anywhere close to correct?
@@ -98,21 +88,18 @@ class MomentoRedis(
             else:
                 ttl = pxat - datetime.datetime.now()
 
-        if isinstance(ttl, int):
-            ttl = datetime.timedelta(seconds=ttl)
-
         if nx:
-            rsp = self.client.set_if_not_exists(self.cache_name, key=name, value=value, ttl=ttl)  # type: ignore
-            if isinstance(rsp, CacheSetIfNotExists.Error):
-                raise convert_momento_to_redis_errors(rsp)
-            elif isinstance(rsp, CacheSetIfNotExists.NotStored):
+            nx_rsp = self.client.set_if_not_exists(self.cache_name, key=name, value=value, ttl=ttl)
+            if isinstance(nx_rsp, CacheSetIfNotExists.Error):
+                raise convert_momento_to_redis_errors(nx_rsp)
+            elif isinstance(nx_rsp, CacheSetIfNotExists.NotStored):
                 return False
-            elif isinstance(rsp, CacheSetIfNotExists.Stored):
+            elif isinstance(nx_rsp, CacheSetIfNotExists.Stored):
                 return True
             else:
-                raise UnknownException(f"Unknown response type: {rsp}")
+                raise UnknownException(f"Unknown response type: {nx_rsp}")
         else:
-            rsp = self.client.set(self.cache_name, name, value, ttl)  # type: ignore
+            rsp = self.client.set(self.cache_name, name, value, ttl)
             if isinstance(rsp, CacheSet.Error):
                 raise convert_momento_to_redis_errors(rsp)
             elif isinstance(rsp, CacheSet.Success):
