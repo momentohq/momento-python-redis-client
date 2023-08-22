@@ -1,7 +1,7 @@
 import datetime
 import time
 import uuid
-from typing import Union
+from typing import Optional, Union
 
 import pytest
 import redis
@@ -186,3 +186,63 @@ def test_delete_multi_happy_path(client: str, request: FixtureRequest) -> None:
     for key in keys:
         val = test_client.get(key)
         assert val is None
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+@pytest.mark.parametrize("initial_amount", ["101", 101], ids=["string", "integer"])
+@pytest.mark.parametrize("decr_amount", [1, None], ids=["value", "no_value"])
+def test_decr_happy_path(client: str, initial_amount: int, decr_amount: Optional[int], request: FixtureRequest) -> None:
+    test_client: TClient = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    test_client.set(key, initial_amount)
+    if decr_amount is None:
+        val = test_client.decr(key)
+    else:
+        val = test_client.decr(key, decr_amount)
+    assert val == 100
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+@pytest.mark.parametrize("initial_amount", ["105", 105], ids=["string", "integer"])
+@pytest.mark.parametrize("decr_amount,expected", [(5, 100), (None, 104)], ids=["value", "no_value"])
+def test_decrby_happy_path(
+    client: str, initial_amount: int, decr_amount: Optional[int], expected: int, request: FixtureRequest
+) -> None:
+    test_client: TClient = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    test_client.set(key, initial_amount)
+    if decr_amount is None:
+        val = test_client.decrby(key)
+    else:
+        val = test_client.decrby(key, decr_amount)
+    assert val == expected
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+@pytest.mark.parametrize("initial_amount", ["99", 99], ids=["string", "integer"])
+@pytest.mark.parametrize("incr_amount", [1, None], ids=["value", "no_value"])
+def test_incr_happy_path(client: str, initial_amount: int, incr_amount: Optional[int], request: FixtureRequest) -> None:
+    test_client: TClient = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    test_client.set(key, initial_amount)
+    if incr_amount is None:
+        val = test_client.incr(key)
+    else:
+        val = test_client.incr(key, incr_amount)
+    assert val == 100
+
+
+@pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
+@pytest.mark.parametrize("initial_amount", ["95", 95], ids=["string", "integer"])
+@pytest.mark.parametrize("incr_amount,expected", [(5, 100), (None, 96)], ids=["value", "no_value"])
+def test_incrby_happy_path(
+    client: str, initial_amount: int, incr_amount: Optional[int], expected: int, request: FixtureRequest
+) -> None:
+    test_client: TClient = request.getfixturevalue(client)
+    key = str(uuid.uuid4())
+    test_client.set(key, initial_amount)
+    if incr_amount is None:
+        val = test_client.incrby(key)
+    else:
+        val = test_client.incrby(key, incr_amount)
+    assert val == expected

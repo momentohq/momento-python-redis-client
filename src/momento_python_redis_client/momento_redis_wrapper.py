@@ -7,7 +7,13 @@ from typing import Optional, Union
 
 from momento import CacheClient
 from momento.errors import UnknownException
-from momento.responses import CacheDelete, CacheGet, CacheSet, CacheSetIfNotExists
+from momento.responses import (
+    CacheDelete,
+    CacheGet,
+    CacheIncrement,
+    CacheSet,
+    CacheSetIfNotExists,
+)
 from redis.typing import AbsExpiryT, EncodableT, ExpiryT, KeyT
 
 from .utils.error_utils import convert_momento_to_redis_errors
@@ -137,3 +143,25 @@ class MomentoRedis:
             if isinstance(rsp, CacheDelete.Success):
                 num_deleted += 1
         return num_deleted
+
+    def decrby(self, name: KeyT, amount: int = 1) -> int:
+        rsp = self.client.increment(self.cache_name, name, -amount)
+        if isinstance(rsp, CacheIncrement.Success):
+            return rsp.value
+        elif isinstance(rsp, CacheIncrement.Error):
+            raise convert_momento_to_redis_errors(rsp)
+        else:
+            raise UnknownException(f"Unknown response type: {rsp}")
+
+    decr = decrby
+
+    def incrby(self, name: KeyT, amount: int = 1) -> int:
+        rsp = self.client.increment(self.cache_name, name, amount)
+        if isinstance(rsp, CacheIncrement.Success):
+            return rsp.value
+        elif isinstance(rsp, CacheIncrement.Error):
+            raise convert_momento_to_redis_errors(rsp)
+        else:
+            raise UnknownException(f"Unknown response type: {rsp}")
+
+    incr = incrby
