@@ -69,7 +69,7 @@ def test_set_with_int_ex_happy_path(client: str, request: FixtureRequest) -> Non
 def test_set_with_timespan_ex_happy_path(client: str, request: FixtureRequest) -> None:
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    test_client.set(key, "bar", ex=datetime.timedelta(seconds=3))
+    test_client.set(key, "bar", ex=datetime.timedelta(seconds=2))
     val = test_client.get(key)
     assert val == b"bar"
     time.sleep(3)
@@ -155,7 +155,7 @@ def test_setex_happy_path(client: str, request: FixtureRequest) -> None:
     test_client.setex(key, datetime.timedelta(seconds=2), "bar")
     val = test_client.get(key)
     assert val == b"bar"
-    time.sleep(2)
+    time.sleep(3)
     val = test_client.get(key)
     assert val is None
 
