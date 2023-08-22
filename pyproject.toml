@@ -7,37 +7,9 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.7,<3.12"
-async-timeout = "4.0.2"
-black = "22.12.0"
-blinker = "1.6.2"
-flask-caching = "1.10.1"
-cachelib = "0.10.2"
-click = "8.1.3"
-decorator = "5.1.1"
-dogpile-cache = "1.2.0"
-flake8 = "5.0.4"
-flask = "2.2.5"
-flask-sqlalchemy = "3.0.3"
-grpcio = "1.54.2"
-isort = "5.11.5"
-itsdangerous = "2.1.2"
-jinja2 = "3.1.2"
-markupsafe = "2.1.2"
-mccabe = "0.7.0"
 momento = "1.7.1"
-momento-wire-types = "^0.67"
-pathspec = "0.11.1"
-pbr = "5.11.1"
-platformdirs = "3.5.1"
-protobuf = "4.23.0"
-pycodestyle = "2.9.1"
-pyflakes = "2.5.0"
-pyjwt = "2.7.0"
 redis = "4.6.0"
-sqlalchemy = "2.0.13"
-stevedore = "3.5.2"
 typing-extensions = "4.5.0"
-werkzeug = "2.2.2"
 types-redis = "^4.6.0.4"
 types-protobuf = "^4.24.0.1"
 
@@ -53,8 +25,8 @@ types-setuptools = "^65.3.0"
 flake8-docstrings = "^1.7.0"
 
 [tool.poetry.group.format.dependencies]
-black = "^22.8.0"
-isort = "^5.10.1"
+black = "^22.12.0"
+isort = "^5.11.5"
 
 [build-system]
 requires = ["poetry-core"]
@@ -115,4 +87,3 @@ exclude = """
 [tool.isort]
 profile = "black"
 src_paths = ["src", "tests"]
-extend_skip_glob = ["src/momento/errors/__init__.py"]
