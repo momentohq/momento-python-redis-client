@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import datetime
 import time
-from typing import Optional, Union
+from typing import Generic, Optional, TypeVar, Union
 
 from momento import CacheClient
 from momento.errors import UnknownException
@@ -14,6 +14,8 @@ from momento.responses import (
     CacheSet,
     CacheSetIfNotExists,
 )
+from redis.client import AbstractRedis
+from redis.commands import CoreCommands, RedisModuleCommands, SentinelCommands
 from redis.typing import AbsExpiryT, EncodableT, ExpiryT, KeyT
 
 from .utils.error_utils import convert_momento_to_redis_errors
@@ -24,8 +26,12 @@ NOT_IMPL_ERR = (
     "APIs you need!"
 )
 
+_StrType = TypeVar("_StrType", bound=Union[str, bytes])
 
-class MomentoRedis:
+
+class MomentoRedis(
+    AbstractRedis, RedisModuleCommands, CoreCommands, SentinelCommands, Generic[_StrType]  # type: ignore
+):
     def __init__(self, client: CacheClient, cache_name: str):
         self.client = client
         self.cache_name = cache_name
