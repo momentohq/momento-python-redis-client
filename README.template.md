@@ -66,12 +66,12 @@ poetry add momento-redis-client
 
 To run these examples, you will need a Momento auth token. You can generate one using the [Momento Console](https://console.gomomento.com).
 
-The examples will utilize your auth token via the environment variable `MOMENTO_AUTH_TOKEN` you set.
+The examples will utilize the auth token via an environment variable `MOMENTO_AUTH_TOKEN` that you set.
 
 ### Basic example
 
-In the [`examples/`](./examples/) directory, you will find a simple CLI app that does some basic sets and gets
-on string. It uses the Momento Redis client by default, but you can also pass a '-r' flag on the command line 
+In the [`examples/`](./examples/) directory, you will find a simple CLI app, `basic.py`, that does some basic sets and 
+gets on strings. It uses the Momento Redis client by default, but you can also pass a '-r' flag on the command line 
 to use a Redis client instead to verify that the two clients are functioning identically. You may also pass a 
 '-h <hostname>' flag and/or a '-p <port>' flag to specify a specific host and port for the Redis client. By 
 default, `localhost` and `6379` are used.
