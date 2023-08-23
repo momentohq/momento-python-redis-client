@@ -1,4 +1,5 @@
 import datetime
+import os
 import time
 import uuid
 from typing import Optional, Union
@@ -11,6 +12,17 @@ from momento_python_redis_client.momento_redis_client import MomentoRedis
 
 TClient = Union[MomentoRedis, redis.Redis]
 
+skip_redis = os.getenv("TEST_SKIP_REDIS", False)
+skip_momento = os.getenv("TEST_SKIP_MOMENTO", False)
+
+
+def _use_client(client: str) -> bool:
+    if client == "momento_redis_client" and skip_momento:
+        return False
+    elif client == "redis_client" and skip_redis:
+        return False
+    return True
+
 
 @pytest.mark.parametrize(
     "client,exception",
@@ -21,6 +33,8 @@ TClient = Union[MomentoRedis, redis.Redis]
     ids=["redis", "momento"],
 )
 def test_get_sad_path(client: str, exception: Exception, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     with pytest.raises(Exception) as exc_info:
         test_client.get(None)  # type: ignore
@@ -29,6 +43,8 @@ def test_get_sad_path(client: str, exception: Exception, request: FixtureRequest
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_set_get_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, "bar")
@@ -38,6 +54,8 @@ def test_set_get_happy_path(client: str, request: FixtureRequest) -> None:
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_get_miss_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     val = test_client.get(key)
@@ -46,6 +64,8 @@ def test_get_miss_happy_path(client: str, request: FixtureRequest) -> None:
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_set_bytes_key_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4()).encode("utf8")
     test_client.set(key, "bar")
@@ -55,6 +75,8 @@ def test_set_bytes_key_happy_path(client: str, request: FixtureRequest) -> None:
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_set_with_int_ex_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, "bar", ex=2)
@@ -67,6 +89,8 @@ def test_set_with_int_ex_happy_path(client: str, request: FixtureRequest) -> Non
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_set_with_timespan_ex_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, "bar", ex=datetime.timedelta(seconds=2))
@@ -79,6 +103,8 @@ def test_set_with_timespan_ex_happy_path(client: str, request: FixtureRequest) -
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_set_with_int_px_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, "bar", px=2500)
@@ -91,6 +117,8 @@ def test_set_with_int_px_happy_path(client: str, request: FixtureRequest) -> Non
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_set_with_timespan_px_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, "bar", px=datetime.timedelta(milliseconds=2500))
@@ -103,6 +131,8 @@ def test_set_with_timespan_px_happy_path(client: str, request: FixtureRequest) -
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_set_with_int_exat_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     secs_now = int(time.time())
@@ -117,6 +147,8 @@ def test_set_with_int_exat_happy_path(client: str, request: FixtureRequest) -> N
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_set_with_datetime_exat_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     datetime_now = datetime.datetime.now()
@@ -131,6 +163,8 @@ def test_set_with_datetime_exat_happy_path(client: str, request: FixtureRequest)
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_setnx_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     resp = test_client.setnx(key, "bar")
@@ -141,6 +175,8 @@ def test_setnx_happy_path(client: str, request: FixtureRequest) -> None:
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_setnx_bytes_key_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4()).encode("utf8")
     test_client.setnx(key, "bar")
@@ -150,6 +186,8 @@ def test_setnx_bytes_key_happy_path(client: str, request: FixtureRequest) -> Non
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_setex_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.setex(key, datetime.timedelta(seconds=2), "bar")
@@ -162,6 +200,8 @@ def test_setex_happy_path(client: str, request: FixtureRequest) -> None:
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_delete_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, "bar")
@@ -174,6 +214,8 @@ def test_delete_happy_path(client: str, request: FixtureRequest) -> None:
 
 @pytest.mark.parametrize("client", ["redis_client", "momento_redis_client"])
 def test_delete_multi_happy_path(client: str, request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     keys = [str(uuid.uuid4()) for _ in range(0, 5)]
     keys.append(f"{uuid.uuid4()}-notakey")
@@ -192,6 +234,8 @@ def test_delete_multi_happy_path(client: str, request: FixtureRequest) -> None:
 @pytest.mark.parametrize("initial_amount", ["101", 101], ids=["string", "integer"])
 @pytest.mark.parametrize("decr_amount", [1, None], ids=["value", "no_value"])
 def test_decr_happy_path(client: str, initial_amount: int, decr_amount: Optional[int], request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, initial_amount)
@@ -208,6 +252,8 @@ def test_decr_happy_path(client: str, initial_amount: int, decr_amount: Optional
 def test_decrby_happy_path(
     client: str, initial_amount: int, decr_amount: Optional[int], expected: int, request: FixtureRequest
 ) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, initial_amount)
@@ -222,6 +268,8 @@ def test_decrby_happy_path(
 @pytest.mark.parametrize("initial_amount", ["99", 99], ids=["string", "integer"])
 @pytest.mark.parametrize("incr_amount", [1, None], ids=["value", "no_value"])
 def test_incr_happy_path(client: str, initial_amount: int, incr_amount: Optional[int], request: FixtureRequest) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, initial_amount)
@@ -238,6 +286,8 @@ def test_incr_happy_path(client: str, initial_amount: int, incr_amount: Optional
 def test_incrby_happy_path(
     client: str, initial_amount: int, incr_amount: Optional[int], expected: int, request: FixtureRequest
 ) -> None:
+    if not _use_client(client):
+        return
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     test_client.set(key, initial_amount)

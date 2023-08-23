@@ -35,22 +35,34 @@ make lint
 
 ## Tests :zap:
 
-### Run integration tests against Momento and Redis
+### Run integration tests against Momento and/or Redis
 
-First run Redis either natively or in a Docker container: 
+You may set environment variables to specify which clients, Momento and/or Redis, to test against. Additionally,
+if you are testing using a Redis server, you may specify the host (`localhost` by default) and port (`6379` by default) 
+your Redis server is running on.
 
+The `TEST_SKIP_REDIS` and `TEST_SKIP_MOMENTO` variables are used to skip testing one or the other of the clients. The 
+`TEST_REDIS_HOST` and `TEST_REDIS_PORT` variables are available to configure your Redis host. So, for example, to run 
+the tests against the Momento Redis client but **not** the Redis client:
+
+```shell
+TEST_SKIP_REDIS=true TEST_AUTH_TOKEN=<YOUR_AUTH_TOKEN> make test
 ```
+
+To test **only** the Redis client on a host and port other than the default:
+
+```shell
+TEST_SKIP_MOMENTO=true TEST_REDIS_HOST="my.redis.host" TEST_REDIS_PORT=1234 make test
+```
+
+If you choose to test against Redis, first run Redis either natively or in a Docker container: 
+
+```shell
 docker run -it -p 6379:6379 redis
 ```
 
-Then run the tests:
+The following will run the integration tests against both Momento and Redis and assumes the Redis server is running on `localhost:6379`.
 
-```
+```shell
 TEST_AUTH_TOKEN=<YOUR_AUTH_TOKEN> make test
-```
-
-This will run the integration tests against both Momento and Redis and assumes the Redis server is running on `localhost:6379`. If using a different host and port, modify the above command as follows:
-
-```
-TEST_REDIS_HOST=<HOST> TEST_REDIS_PORT=<PORT> TEST_AUTH_TOKEN=<YOUR_AUTH_TOKEN> make test
 ```

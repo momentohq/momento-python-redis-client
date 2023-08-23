@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import timedelta
 
@@ -27,7 +28,9 @@ def momento_redis_client():  # type: ignore
 
 @pytest.fixture(scope="session")
 def redis_client():  # type: ignore
-    with Redis("localhost", 6379, 0) as client:
+    host = os.getenv("TEST_REDIS_HOST", "localhost")
+    port = os.getenv("TEST_REDIS_PORT", 6379)
+    with Redis(host, int(port), 0) as client:
         try:
             yield client
         finally:
