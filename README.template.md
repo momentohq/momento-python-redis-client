@@ -71,8 +71,10 @@ The examples will utilize your auth token via the environment variable `MOMENTO_
 ### Basic example
 
 In the [`examples/`](./examples/) directory, you will find a simple CLI app that does some basic sets and gets
-on string. You can pass the `--momento` flag to run against Momento, or the `--redis` flag to run against
-a local Redis (127.0.0.0:6379).
+on string. It uses the Momento Redis client by default, but you can also pass a '-r' flag on the command line 
+to use a Redis client instead to verify that the two clients are functioning identically. You may also pass a 
+'-h <hostname>' flag and/or a '-p <port>' flag to specify a specific host and port for the Redis client. By 
+default, `localhost` and `6379` are used.
 
 Here's an example run against Momento Cache:
 
@@ -82,7 +84,7 @@ export MOMENTO_AUTH_TOKEN=<your momento auth token goes here>
 python basic.py
 ```
 
-And the output should look something like this:
+And the output should look like this:
 
 ```bash
 Issuing a 'get' for 'key1', which we have not yet set.
@@ -93,6 +95,8 @@ Issuing another 'get' for 'key1'.
 result: b'bar'
 done
 ```
+
+Running the script using Redis (`python basic.py -r`) should produce identical output.
 
 ## Current Redis API Support
 
