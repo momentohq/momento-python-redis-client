@@ -54,11 +54,3 @@ This will run the integration tests against both Momento and Redis and assumes t
 ```
 TEST_REDIS_HOST=<HOST> TEST_REDIS_PORT=<PORT> TEST_AUTH_TOKEN=<YOUR_AUTH_TOKEN> make test
 ```
-
-### Run all tests
-
- As above, we assume the Redis server is running on `localhost:6379`.
-
-```
-TEST_AUTH_TOKEN=<YOUR_AUTH_TOKEN> npm run test
-```
