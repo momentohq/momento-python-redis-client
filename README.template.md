@@ -33,7 +33,7 @@ redis_client = Redis(host=_REDIS_HOST, port=_REDIS_PORT, db=_REDIS_DB, password=
 import datetime
 # Import the Momento redis compatibility client.
 import momento
-from momento_python_redis_client.momento_redis_client import MomentoRedis
+from momento_python_redis_client import MomentoRedis
 
 _CACHE_NAME = "my-cache"
 # Initialize Momento client.
@@ -79,26 +79,18 @@ Here's an example run against Momento Cache:
 ```bash
 cd examples/
 export MOMENTO_AUTH_TOKEN=<your momento auth token goes here>
-python basic.py --momento
+python basic.py
 ```
 
 And the output should look something like this:
 
 ```bash
-
-using momento-node-redis with cache 'cache'
-[2023-04-10T23:16:45.893Z] INFO (Momento: CacheClient): Creating Momento CacheClient
-[2023-04-10T23:16:45.901Z] INFO (Momento: ControlClient): Creating cache: cache
-
-Issuing a 'get' for key 'key1', which we have not yet set.
-result 'null'
-
-Issuing a 'set' for key 'key1', with value 'value1'.
-result: OK
-
-Issuing another 'get' for key key1.
-result: 'value1' (String)
-
+Issuing a 'get' for 'key1', which we have not yet set.
+result: None
+Issuing a 'set' for 'key1', with value 'value1'.
+result: True
+Issuing another 'get' for 'key1'.
+result: b'bar'
 done
 ```
 
@@ -108,5 +100,19 @@ This library supports the most popular Redis APIs, but does not yet support all 
 common APIs related to string values (GET, SET, DELETE, INCR, DECR). We will be adding support for additional
 APIs in the future. If there is a particular API that you need support for, please drop by our [Discord](https://discord.com/invite/3HkAKjUZGq)
 or e-mail us at [support@momentohq.com](mailto:support@momentohq.com) and let us know!
+
+### Type Checking
+
+To allow the use of tools such as `mypy` and in-IDE type checking to tell you if you're using any APIs that we 
+don't support yet, we provide our own `MomentoRedisBase` abstract base class which explicitly lists out 
+the APIs we currently support. Simply use the class as a type annotation for your client:
+
+```python
+from momento_python_redis_client import MomentoRedis, MomentoRedisBase
+redis_client: MomentoRedisBase = MomentoRedis(...)
+```
+
+Once the client is typed using the abstract base class, static analysis tools will allow you to find 
+calls to as yet unsupported APIs.
 
 {{ ossFooter }}
