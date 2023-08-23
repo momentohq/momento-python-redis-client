@@ -57,7 +57,7 @@ def test_set_bytes_key_happy_path(client: str, request: FixtureRequest) -> None:
 def test_set_with_int_ex_happy_path(client: str, request: FixtureRequest) -> None:
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
-    test_client.set(key, "bar", ex=3)
+    test_client.set(key, "bar", ex=2)
     val = test_client.get(key)
     assert val == b"bar"
     time.sleep(3)
@@ -106,7 +106,7 @@ def test_set_with_int_exat_happy_path(client: str, request: FixtureRequest) -> N
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     secs_now = int(time.time())
-    exat = secs_now + 3
+    exat = secs_now + 2
     test_client.set(key, "bar", exat=exat)
     val = test_client.get(key)
     assert val == b"bar"
@@ -120,7 +120,7 @@ def test_set_with_datetime_exat_happy_path(client: str, request: FixtureRequest)
     test_client: TClient = request.getfixturevalue(client)
     key = str(uuid.uuid4())
     datetime_now = datetime.datetime.now()
-    exat = datetime_now + datetime.timedelta(seconds=3)
+    exat = datetime_now + datetime.timedelta(seconds=2)
     test_client.set(key, "bar", exat=exat)
     val = test_client.get(key)
     assert val == b"bar"
