@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "momento-python-redis-client"
 version = "0.1.0"
-description = ""
+description = "Momento wrapper for redis/redis-py"
 authors = ["Momento <hello@momentohq.com>"]
 readme = "README.md"
+license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.7,<3.12"
