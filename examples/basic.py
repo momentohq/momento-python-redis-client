@@ -53,15 +53,17 @@ def get_client(argv):
 
 
 def main(argv):
+    key = "key1"
+    val = "value1"
     client = get_client(argv)
     print("Issuing a 'get' for 'key1', which we have not yet set.")
-    result = client.get("foo")
+    result = client.get(key)
     print(f"result: {result}")
     print("Issuing a 'set' for 'key1', with value 'value1'.")
-    result = client.set("foo", "bar")
+    result = client.set(key, val)
     print(f"result: {result}")
     print("Issuing another 'get' for 'key1'.")
-    result = client.get("foo")
+    result = client.get(key)
     print(f"result: {result}")
     print("done")
 
