@@ -1,0 +1,103 @@
+name: On push to main branch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        new-python-protobuf: ["true"]
+        include:
+          - python-version: "3.7"
+            new-python-protobuf: "false"
+    env:
+      TEST_AUTH_TOKEN: ${{ secrets.ALPHA_TEST_AUTH_TOKEN }}
+      TEST_CACHE_NAME: python-integration-test-${{ matrix.python-version }}-${{ matrix.new-python-protobuf }}-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate README
+        uses: momentohq/standards-and-practices/github-actions/generate-and-commit-oss-readme@gh-actions-v1
+        with:
+          project_status: official
+          project_stability: alpha
+          project_type: other
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Bootstrap poetry
+        run: |
+          curl -sL https://install.python-poetry.org | python - -y --version 1.3.1
+
+      - name: Configure poetry
+        run: poetry config virtualenvs.in-project true
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Install Old Protobuf
+        # Exercises the wire types generated against the old protobuf library
+        if: matrix.new-python-protobuf == 'false'
+        run: poetry add "protobuf<3.20"
+
+      - name: Run mypy
+        # mypy has inconsistencies between 3.7 and the rest; default to lowest common denominator
+        if: matrix.python-version == '3.7'
+        run: poetry run mypy src tests
+
+      - name: Run flake8
+        run: poetry run flake8 src tests
+
+      - name: Run black
+        run: poetry run black src tests --check --diff
+
+      - name: Run isort
+        run: poetry run isort . --check --diff
+
+      - name: Run tests
+        run: poetry run pytest -p no:sugar -q
+
+  publish:
+    runs-on: ubuntu-20.04
+    needs: [test]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: google-github-actions/release-please-action@v3
+        name: Release Please
+        id: release
+        with:
+          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
+          release-type: python
+          package-name: momento-python-redis-client
+          bump-minor-pre-major: true
+          changelog-types: '[{"type":"feat","section":"Features","hidden":false},{"type":"fix","section":"Bug Fixes","hidden":false},{"type":"chore","section":"Miscellaneous","hidden":false}]'
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Publish
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYTHON_CUSTOMER_SDK_PYPI_TOKEN }}
+        run: |
+          echo "poetry version ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}"
+#          curl -sL https://install.python-poetry.org | python - -y --version 1.3.1
+#          poetry version ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
+#          poetry build
+#          poetry publish
+        if: ${{ steps.release.outputs.release_created }}
