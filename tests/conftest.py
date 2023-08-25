@@ -8,7 +8,7 @@ import momento
 import pytest
 from redis import Redis
 
-from momento_python_redis_client.momento_redis_client import MomentoRedis
+from momento_redis import MomentoRedis
 
 
 @pytest.fixture(scope="session")

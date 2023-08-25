@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "momento-python-redis-client"
+name = "momento-redis"
 version = "0.1.0"
 description = "Momento wrapper for redis/redis-py"
 authors = ["Momento <hello@momentohq.com>"]
