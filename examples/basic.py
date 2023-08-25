@@ -5,7 +5,7 @@ import sys
 import momento
 from redis import Redis
 
-from momento_python_redis_client import MomentoRedis
+from momento_redis import MomentoRedis
 
 _CACHE_NAME = "my-cache"
 

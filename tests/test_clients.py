@@ -8,7 +8,7 @@ import pytest
 import redis
 from _pytest.fixtures import FixtureRequest
 
-from momento_python_redis_client.momento_redis_client import MomentoRedis
+from momento_redis import MomentoRedis
 
 TClient = Union[MomentoRedis, redis.Redis]
 
