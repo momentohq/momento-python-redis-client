@@ -37,7 +37,7 @@ redis_client = Redis(host=_REDIS_HOST, port=_REDIS_PORT, db=_REDIS_DB, password=
 import datetime
 # Import the Momento redis compatibility client.
 import momento
-from momento_python_redis_client import MomentoRedis
+from momento_redis import MomentoRedis
 
 _CACHE_NAME = "my-cache"
 # Initialize Momento client.
@@ -57,11 +57,11 @@ for more information see the [current Redis API support](#current-redis-api-supp
 
 ## Installation
 
-The Momento Python Redis compatibility client is [available on PyPi](https://pypi.org/project/momento-redis-client/).
+The Momento Python Redis compatibility client is [available on PyPi](https://pypi.org/project/momento-redis/).
 You can install it via:
 
 ```bash
-poetry add momento-redis-client
+poetry add momento-redis
 ```
 
 ## Examples
@@ -116,7 +116,7 @@ don't support yet, we provide our own `MomentoRedisBase` abstract base class whi
 the APIs we currently support. Simply use the class as a type annotation for your client:
 
 ```python
-from momento_python_redis_client import MomentoRedis, MomentoRedisBase
+from momento_redis import MomentoRedis, MomentoRedisBase
 redis_client: MomentoRedisBase = MomentoRedis(...)
 ```
 
