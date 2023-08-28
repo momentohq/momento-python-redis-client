@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/momentohq/momento-python-redis-client/compare/v0.1.1...v0.1.2) (2023-08-28)
+
+
+### Bug Fixes
+
+* use correct token for publishing to pypi ([#11](https://github.com/momentohq/momento-python-redis-client/issues/11)) ([13a17e6](https://github.com/momentohq/momento-python-redis-client/commit/13a17e6719331caa91f38cc4457810a352ef0bf0))
+
 ## [0.1.1](https://github.com/momentohq/momento-python-redis-client/compare/v0.1.0...v0.1.1) (2023-08-28)
 
 
