@@ -74,7 +74,8 @@ The examples will utilize the auth token via an environment variable `MOMENTO_AU
 
 ### Basic example
 
-In the [`examples/`](./examples/) directory, you will find a simple CLI app, `basic.py`, that does some basic sets and gets on strings. It uses the Momento Redis client by default, but you can also pass a '-r' flag on the command line 
+In the [`examples/`](./examples/) directory, you will find a simple CLI app, `basic.py`, that does some basic sets and 
+gets on strings. It uses the Momento Redis client by default, but you can also pass a '-r' flag on the command line 
 to use a Redis client instead to verify that the two clients are functioning identically. You may also pass a 
 '-h <hostname>' flag and/or a '-p <port>' flag to specify a specific host and port for the Redis client. By 
 default, `localhost` and `6379` are used.
