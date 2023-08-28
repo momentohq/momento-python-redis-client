@@ -108,7 +108,7 @@ jobs:
 
       - name: Publish
         env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYTHON_CUSTOMER_SDK_PYPI_TOKEN }}
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_MOMENTO_ACCOUNT_WIDE_TOKEN }}
         run: |
           curl -sL https://install.python-poetry.org | python - -y --version 1.3.1
           poetry version ${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
