@@ -13,7 +13,7 @@ _CACHE_NAME = "my-cache"
 def get_momento_client():
     print("Using momento redis client")
     return MomentoRedis(
-        momento.CacheClient(
+        momento.CacheClient.create(
             momento.Configurations.Laptop.latest(),
             momento.CredentialProvider.from_environment_variable("MOMENTO_AUTH_TOKEN"),
             datetime.timedelta(seconds=60)
