@@ -42,7 +42,7 @@ from momento_redis import MomentoRedis
 _CACHE_NAME = "my-cache"
 # Initialize Momento client.
 redis_client = MomentoRedis(
-    momento.CacheClient(
+    momento.CacheClient.create(
         momento.Configurations.Laptop.latest(),
         momento.CredentialProvider.from_environment_variable("MOMENTO_AUTH_TOKEN"),
         datetime.timedelta(seconds=60)
