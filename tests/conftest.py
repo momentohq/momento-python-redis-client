@@ -14,7 +14,7 @@ from momento_redis import MomentoRedis
 @pytest.fixture(scope="session")
 def momento_redis_client():  # type: ignore
     cache_name = f"momento-python-redis-client-test-{uuid.uuid4()}"
-    with momento.CacheClient(
+    with momento.CacheClient.create(
         momento.Configurations.Laptop.latest(),
         momento.CredentialProvider.from_environment_variable("TEST_AUTH_TOKEN"),
         timedelta(seconds=60),
