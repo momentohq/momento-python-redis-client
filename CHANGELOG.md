@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.0](https://github.com/momentohq/momento-python-redis-client/compare/v0.1.2...v0.2.0) (2024-12-06)
+
+
+### Features
+
+* update to momento python SDK 1.9.0 and use eager connections ([#13](https://github.com/momentohq/momento-python-redis-client/issues/13)) ([8ac66bf](https://github.com/momentohq/momento-python-redis-client/commit/8ac66bf359742cb038dee93cb3951d9bf6221532))
+
+
+### Bug Fixes
+
+* bump deps to get upstream lib patches ([#16](https://github.com/momentohq/momento-python-redis-client/issues/16)) ([471c8aa](https://github.com/momentohq/momento-python-redis-client/commit/471c8aad100b996e1b1d91440c6f183d0ffed492))
+
+
+### Miscellaneous
+
+* bumps README gen plugin version to latest ([#17](https://github.com/momentohq/momento-python-redis-client/issues/17)) ([3b7ae3b](https://github.com/momentohq/momento-python-redis-client/commit/3b7ae3bc4fe4e24f8215f01e71b3e0d72b5edcff))
+* update license file ([#18](https://github.com/momentohq/momento-python-redis-client/issues/18)) ([506efc7](https://github.com/momentohq/momento-python-redis-client/commit/506efc7729ed825ca79269abd505b1478a6d3366))
+
 ## [0.1.2](https://github.com/momentohq/momento-python-redis-client/compare/v0.1.1...v0.1.2) (2023-08-28)
 
 
