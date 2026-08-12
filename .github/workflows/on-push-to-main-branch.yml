@@ -71,10 +71,17 @@ jobs:
     needs: [test]
 
     steps:
+      - name: Generate release bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.MOMENTO_RELEASE_APP_ID }}
+          private-key: ${{ secrets.MOMENTO_RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v3
         name: Setup repo
         with:
-          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Generate README
         uses: momentohq/standards-and-practices/github-actions/generate-and-commit-oss-readme@gh-actions-v2
@@ -88,13 +95,20 @@ jobs:
     needs: [readme]
 
     steps:
+      - name: Generate release bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.MOMENTO_RELEASE_APP_ID }}
+          private-key: ${{ secrets.MOMENTO_RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v3
 
       - uses: google-github-actions/release-please-action@v3
         name: Release Please
         id: release
         with:
-          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           release-type: python
           package-name: momento-python-redis-client
           bump-minor-pre-major: true
