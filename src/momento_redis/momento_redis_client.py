@@ -1,4 +1,5 @@
 """Momento Python Redis Client."""
+
 from __future__ import annotations
 
 import datetime

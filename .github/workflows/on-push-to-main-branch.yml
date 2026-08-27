@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11"]
         new-python-protobuf: ["true"]
         include:
-          - python-version: "3.7"
+          - python-version: "3.10"
             new-python-protobuf: "false"
     services:
       redis:
@@ -50,8 +50,8 @@ jobs:
         run: poetry add "protobuf<3.20"
 
       - name: Run mypy
-        # mypy has inconsistencies between 3.7 and the rest; default to lowest common denominator
-        if: matrix.python-version == '3.7'
+        # mypy has inconsistencies across versions; default to lowest supported
+        if: matrix.python-version == '3.10'
         run: poetry run mypy src tests
 
       - name: Run flake8
