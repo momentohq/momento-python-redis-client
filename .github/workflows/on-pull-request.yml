@@ -9,11 +9,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
-        new-python-protobuf: ["true"]
-        include:
-          - python-version: "3.7"
-            new-python-protobuf: "false"
+        python-version: ["3.10", "3.11"]
     services:
       redis:
         image: redis
@@ -21,7 +17,7 @@ jobs:
           - 6379:6379
     env:
       TEST_AUTH_TOKEN: ${{ secrets.ALPHA_TEST_AUTH_TOKEN }}
-      TEST_CACHE_NAME: python-integration-test-${{ matrix.python-version }}-${{ matrix.new-python-protobuf }}-${{ github.sha }}
+      TEST_CACHE_NAME: python-integration-test-${{ matrix.python-version }}-${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v3
@@ -53,14 +49,9 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Install Old Protobuf
-        # Exercises the wire types generated against the old protobuf library
-        if: matrix.new-python-protobuf == 'false'
-        run: poetry add "protobuf<3.20"
-
       - name: Run mypy
-        # mypy has inconsistencies between 3.7 and the rest; default to lowest common denominator
-        if: matrix.python-version == '3.7'
+        # mypy has inconsistencies across versions; default to lowest supported
+        if: matrix.python-version == '3.10'
         run: poetry run mypy src tests
 
       - name: Run flake8
